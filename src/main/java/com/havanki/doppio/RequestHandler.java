@@ -28,11 +28,9 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.net.FileNameMap;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URLConnection;
 
 import javax.net.ssl.SSLSocket;
 
@@ -46,7 +44,8 @@ public class RequestHandler implements Runnable {
   private static final String GEMINI_SCHEME = "gemini";
   private static final String CRLF = "\r\n";
 
-  private final FileNameMap fileNameMap = URLConnection.getFileNameMap();
+  private final ContentTypeResolver contentTypeResolver =
+    new ContentTypeResolver();
 
   private final ServerProperties serverProps;
   private final Socket socket;
@@ -98,13 +97,26 @@ public class RequestHandler implements Runnable {
         writeResponseHeader(out, StatusCodes.NOT_FOUND,
                             "Resource not found");
         return;
+      } else if (resourceFile.isDirectory()) {
+        File resourceDir = resourceFile;
+        resourceFile = null;
+        for (String suffix : contentTypeResolver.getGeminiSuffixes()) {
+          resourceFile = new File(resourceDir, "index" + suffix);
+          if (resourceFile.exists()) {
+            break;
+          }
+        }
+        if (resourceFile == null) {
+          writeResponseHeader(out, StatusCodes.NOT_FOUND,
+                              "Index file not found");
+        }
       }
 
-      String fileName = resourcePath.getFileName().toString();
-      String contentType = fileNameMap.getContentTypeFor(fileName);
+      String fileName = resourceFile.getName();
+      String contentType = contentTypeResolver.getContentTypeFor(fileName);
 
       writeResponseHeader(out, StatusCodes.SUCCESS, contentType);
-      writeFile(out, resourcePath);
+      writeFile(out, resourceFile);
     } catch (IOException e) {
       LOG.error("Failed to handle request", e);
     } finally {
@@ -138,8 +150,8 @@ public class RequestHandler implements Runnable {
     out.flush();
   }
 
-  private void writeFile(BufferedOutputStream out, Path resourcePath)
+  private void writeFile(BufferedOutputStream out, File resourceFile)
     throws IOException {
-    Files.copy(resourcePath, out);
+    Files.copy(resourceFile.toPath(), out);
   }
 }
