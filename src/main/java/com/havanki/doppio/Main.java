@@ -30,7 +30,7 @@ public class Main {
       props.load(r);
     }
 
-    Server server = new Server(props);
+    Server server = new Server(new ServerProperties(props));
     server.start();
   }
 }

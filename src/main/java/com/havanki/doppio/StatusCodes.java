@@ -29,5 +29,6 @@ public final class StatusCodes {
 
   public static final int SUCCESS = 20;
   public static final int NOT_FOUND = 51;
+  public static final int PROXY_REQUEST_REFUSED = 53;
   public static final int BAD_REQUEST = 59;
 }

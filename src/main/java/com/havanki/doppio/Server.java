@@ -22,9 +22,6 @@ package com.havanki.doppio;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
-import java.nio.file.FileSystems;
-import java.nio.file.Path;
-import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -40,33 +37,20 @@ public class Server {
 
   private static final Logger LOG = LoggerFactory.getLogger(Server.class);
 
-  private static final int DEFAULT_PORT = 1965;
-  private static final int DEFAULT_NUM_THREADS = 4;
-
-  private final Path root;
-  private final int port;
+  private final ServerProperties serverProps;
   private final ExecutorService executorService;
 
-  public Server(Properties props) {
-    root = FileSystems.getDefault().getPath(props.getProperty("root"));
-    port = getIntProperty(props, "port", DEFAULT_PORT);
-    int numThreads = getIntProperty(props, "numThreads", DEFAULT_NUM_THREADS);
-    executorService = Executors.newFixedThreadPool(numThreads);
-  }
-
-  private final int getIntProperty(Properties props, String key,
-                                   int defaultValue) {
-    if (!props.containsKey(key)) {
-      return defaultValue;
-    }
-    return Integer.parseInt(props.getProperty(key));
+  public Server(ServerProperties serverProps) {
+    this.serverProps = serverProps;
+    executorService =
+      Executors.newFixedThreadPool(serverProps.getNumThreads());
   }
 
   private ServerSocket serverSocket;
 
   public void start() throws Exception {
     serverSocket = SSLServerSocketFactory.getDefault()
-      .createServerSocket(port);
+      .createServerSocket(serverProps.getPort());
 
     SSLParameters sslParameters =
         SSLContext.getDefault().getDefaultSSLParameters();
@@ -77,7 +61,7 @@ public class Server {
       while (true) {
         LOG.debug("Accepting connection");
         Socket clientSocket = serverSocket.accept();
-        executorService.submit(new RequestHandler(root, clientSocket));
+        executorService.submit(new RequestHandler(serverProps, clientSocket));
       }
     } catch (SocketException e) {
       LOG.error("Exception while accepting new connection", e);

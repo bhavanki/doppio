@@ -43,25 +43,27 @@ public class RequestHandler implements Runnable {
 
   private static final Logger LOG = LoggerFactory.getLogger(RequestHandler.class);
 
+  private static final String GEMINI_SCHEME = "gemini";
   private static final String CRLF = "\r\n";
 
   private final FileNameMap fileNameMap = URLConnection.getFileNameMap();
 
-  private final Path root;
+  private final ServerProperties serverProps;
   private final Socket socket;
 
-  public RequestHandler(Path root, Socket socket) {
-    this.root = root;
+  public RequestHandler(ServerProperties serverProps, Socket socket) {
+    this.serverProps = serverProps;
     this.socket = socket;
   }
 
   @Override
   public void run() {
-    try (InputStreamReader isr = new InputStreamReader(socket.getInputStream());
+    try (InputStreamReader isr =
+            new InputStreamReader(socket.getInputStream(),
+                                  StandardCharsets.UTF_8);
          BufferedReader in = new BufferedReader(isr);
          OutputStream os = socket.getOutputStream();
          BufferedOutputStream out = new BufferedOutputStream(os)) {
-         // PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
       String request = in.readLine();
       URI uri;
       try {
@@ -72,13 +74,23 @@ public class RequestHandler implements Runnable {
                             "Invalid request URI");
         return;
       }
+      if (!hasValidScheme(uri)) {
+        writeResponseHeader(out, StatusCodes.PROXY_REQUEST_REFUSED,
+                            "Only the gemini scheme is supported");
+        return;
+      }
+      if (!hasMatchingHost(uri)) {
+        writeResponseHeader(out, StatusCodes.PROXY_REQUEST_REFUSED,
+                            "Invalid host");
+        return;
+      }
 
       String path = uri.getPath();
       LOG.debug("Path requested: {}", path);
       if (path.length() > 0 && path.charAt(0) == '/') {
         path = path.substring(1);
       }
-      Path resourcePath = root.resolve(path);
+      Path resourcePath = serverProps.getRoot().resolve(path);
       LOG.info("Resolved path: {}", resourcePath);
 
       File resourceFile = resourcePath.toFile();
@@ -105,6 +117,18 @@ public class RequestHandler implements Runnable {
   }
 
   private static final String RESPONSE_HEADER_FORMAT = "%d %s" + CRLF;
+
+  private boolean hasValidScheme(URI uri) {
+    String scheme = uri.getScheme();
+    if (uri == null) {
+      return true;
+    }
+    return (GEMINI_SCHEME.equals(scheme));
+  }
+
+  private boolean hasMatchingHost(URI uri) {
+    return serverProps.getHost().equalsIgnoreCase(uri.getHost());
+  }
 
   private void writeResponseHeader(BufferedOutputStream out, int statusCode,
                                    String meta)
