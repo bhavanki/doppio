@@ -77,7 +77,7 @@ public class Server {
       while (true) {
         LOG.debug("Accepting connection");
         Socket clientSocket = serverSocket.accept();
-        executorService.submit(new RequestHandler(clientSocket));
+        executorService.submit(new RequestHandler(root, clientSocket));
       }
     } catch (SocketException e) {
       LOG.error("Exception while accepting new connection", e);

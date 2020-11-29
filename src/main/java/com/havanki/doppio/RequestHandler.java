@@ -19,11 +19,20 @@
 
 package com.havanki.doppio;
 
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.net.FileNameMap;
 import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLConnection;
 
 import javax.net.ssl.SSLSocket;
 
@@ -34,29 +43,79 @@ public class RequestHandler implements Runnable {
 
   private static final Logger LOG = LoggerFactory.getLogger(RequestHandler.class);
 
+  private static final String CRLF = "\r\n";
+
+  private final FileNameMap fileNameMap = URLConnection.getFileNameMap();
+
+  private final Path root;
   private final Socket socket;
 
-  public RequestHandler(Socket socket) {
+  public RequestHandler(Path root, Socket socket) {
+    this.root = root;
     this.socket = socket;
   }
 
   @Override
   public void run() {
-    try {
-      PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-      BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
+    try (InputStreamReader isr = new InputStreamReader(socket.getInputStream());
+         BufferedReader in = new BufferedReader(isr);
+         OutputStream os = socket.getOutputStream();
+         BufferedOutputStream out = new BufferedOutputStream(os)) {
+         // PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
       String request = in.readLine();
-      LOG.debug("Request: {}", request);
+      URI uri;
+      try {
+        uri = new URI(request.trim());
+        LOG.debug("Request URI: {}", uri);
+      } catch (URISyntaxException e) {
+        writeResponseHeader(out, StatusCodes.BAD_REQUEST,
+                            "Invalid request URI");
+        return;
+      }
 
-      out.println("phhgbbtbtptt");
+      String path = uri.getPath();
+      LOG.debug("Path requested: {}", path);
+      if (path.length() > 0 && path.charAt(0) == '/') {
+        path = path.substring(1);
+      }
+      Path resourcePath = root.resolve(path);
+      LOG.info("Resolved path: {}", resourcePath);
 
-      in.close();
-      out.close();
-      socket.close();
+      File resourceFile = resourcePath.toFile();
+      if (!resourceFile.exists()) {
+        writeResponseHeader(out, StatusCodes.NOT_FOUND,
+                            "Resource not found");
+        return;
+      }
+
+      String fileName = resourcePath.getFileName().toString();
+      String contentType = fileNameMap.getContentTypeFor(fileName);
+
+      writeResponseHeader(out, StatusCodes.SUCCESS, contentType);
+      writeFile(out, resourcePath);
     } catch (IOException e) {
       LOG.error("Failed to handle request", e);
+    } finally {
+      try {
+        socket.close();
+      } catch (IOException e) {
+        LOG.debug("Failed to close socket", e);
+      }
     }
   }
 
+  private static final String RESPONSE_HEADER_FORMAT = "%d %s" + CRLF;
+
+  private void writeResponseHeader(BufferedOutputStream out, int statusCode,
+                                   String meta)
+    throws IOException {
+    String header = String.format(RESPONSE_HEADER_FORMAT, statusCode, meta);
+    out.write(header.getBytes(StandardCharsets.UTF_8));
+    out.flush();
+  }
+
+  private void writeFile(BufferedOutputStream out, Path resourcePath)
+    throws IOException {
+    Files.copy(resourcePath, out);
+  }
 }
