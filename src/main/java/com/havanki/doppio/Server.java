@@ -23,9 +23,12 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import javax.net.ssl.SNIHostName;
+import javax.net.ssl.SNIMatcher;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLServerSocket;
@@ -58,6 +61,9 @@ public class Server {
     SSLParameters sslParameters =
         SSLContext.getDefault().getDefaultSSLParameters();
     sslParameters.setProtocols(new String[] { "TLSv1.3", "TLSv1.2" });
+    String hostRegex = serverProps.getHost().replace(".", "\\.");
+    SNIMatcher sniMatcher = SNIHostName.createSNIMatcher(hostRegex);
+    sslParameters.setSNIMatchers(Collections.singletonList(sniMatcher));
     ((SSLServerSocket) serverSocket).setSSLParameters(sslParameters);
 
     try {
