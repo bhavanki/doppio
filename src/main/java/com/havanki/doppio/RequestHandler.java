@@ -48,10 +48,14 @@ public class RequestHandler implements Runnable {
     new ContentTypeResolver();
 
   private final ServerProperties serverProps;
+  private final AccessLogger accessLogger;
   private final Socket socket;
 
-  public RequestHandler(ServerProperties serverProps, Socket socket) {
+  public RequestHandler(ServerProperties serverProps,
+                        AccessLogger accessLogger,
+                        Socket socket) {
     this.serverProps = serverProps;
+    this.accessLogger = accessLogger;
     this.socket = socket;
   }
 
@@ -63,24 +67,27 @@ public class RequestHandler implements Runnable {
          BufferedReader in = new BufferedReader(isr);
          OutputStream os = socket.getOutputStream();
          BufferedOutputStream out = new BufferedOutputStream(os)) {
-      String request = in.readLine();
+      String request = in.readLine().trim();
       URI uri;
       try {
-        uri = new URI(request.trim());
+        uri = new URI(request);
         LOG.debug("Request URI: {}", uri);
       } catch (URISyntaxException e) {
         writeResponseHeader(out, StatusCodes.BAD_REQUEST,
                             "Invalid request URI");
+        accessLogger.logError(socket, request, StatusCodes.BAD_REQUEST);
         return;
       }
       if (!hasValidScheme(uri)) {
         writeResponseHeader(out, StatusCodes.PROXY_REQUEST_REFUSED,
                             "Only the gemini scheme is supported");
+        accessLogger.logError(socket, request, StatusCodes.PROXY_REQUEST_REFUSED);
         return;
       }
       if (!hasMatchingHost(uri)) {
         writeResponseHeader(out, StatusCodes.PROXY_REQUEST_REFUSED,
                             "Invalid host");
+        accessLogger.logError(socket, request, StatusCodes.PROXY_REQUEST_REFUSED);
         return;
       }
 
@@ -90,12 +97,13 @@ public class RequestHandler implements Runnable {
         path = path.substring(1);
       }
       Path resourcePath = serverProps.getRoot().resolve(path);
-      LOG.info("Resolved path: {}", resourcePath);
+      LOG.debug("Resolved path: {}", resourcePath);
 
       File resourceFile = resourcePath.toFile();
       if (!resourceFile.exists()) {
         writeResponseHeader(out, StatusCodes.NOT_FOUND,
                             "Resource not found");
+        accessLogger.logError(socket, request, StatusCodes.NOT_FOUND);
         return;
       } else if (resourceFile.isDirectory()) {
         File resourceDir = resourceFile;
@@ -109,6 +117,7 @@ public class RequestHandler implements Runnable {
         if (resourceFile == null) {
           writeResponseHeader(out, StatusCodes.NOT_FOUND,
                               "Index file not found");
+          accessLogger.logError(socket, request, StatusCodes.NOT_FOUND);
         }
       }
 
@@ -116,7 +125,8 @@ public class RequestHandler implements Runnable {
       String contentType = contentTypeResolver.getContentTypeFor(fileName);
 
       writeResponseHeader(out, StatusCodes.SUCCESS, contentType);
-      writeFile(out, resourceFile);
+      long bytesWritten = writeFile(out, resourceFile);
+      accessLogger.log(socket, request, StatusCodes.SUCCESS, bytesWritten);
     } catch (IOException e) {
       LOG.error("Failed to handle request", e);
     } finally {
@@ -150,8 +160,8 @@ public class RequestHandler implements Runnable {
     out.flush();
   }
 
-  private void writeFile(BufferedOutputStream out, File resourceFile)
+  private long writeFile(BufferedOutputStream out, File resourceFile)
     throws IOException {
-    Files.copy(resourceFile.toPath(), out);
+    return Files.copy(resourceFile.toPath(), out);
   }
 }

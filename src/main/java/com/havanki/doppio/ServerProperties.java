@@ -25,19 +25,31 @@ import java.util.Properties;
 
 public class ServerProperties {
 
+  private static final Path DEFAULT_ROOT = Path.of("/var/gemini");
   private static final int DEFAULT_PORT = 1965;
   private static final int DEFAULT_NUM_THREADS = 4;
+  private static final Path DEFAULT_LOG_DIR = null;
 
   private final Path root;
   private final String host;
   private final int port;
   private final int numThreads;
+  private final Path logDir;
 
   public ServerProperties(Properties props) {
-    root = FileSystems.getDefault().getPath(props.getProperty("root"));
+    root = getPathProperty(props, "root", DEFAULT_ROOT);
     host = props.getProperty("host");
     port = getIntProperty(props, "port", DEFAULT_PORT);
     numThreads = getIntProperty(props, "numThreads", DEFAULT_NUM_THREADS);
+    logDir = getPathProperty(props, "logDir", DEFAULT_LOG_DIR);
+  }
+
+  private final Path getPathProperty(Properties props, String key,
+                                     Path defaultValue) {
+    if (!props.containsKey(key)) {
+      return defaultValue;
+    }
+    return FileSystems.getDefault().getPath(props.getProperty(key));
   }
 
   private final int getIntProperty(Properties props, String key,
@@ -62,5 +74,9 @@ public class ServerProperties {
 
   public int getNumThreads() {
     return numThreads;
+  }
+
+  public Path getLogDir() {
+    return logDir;
   }
 }

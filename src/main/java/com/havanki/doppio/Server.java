@@ -19,6 +19,7 @@
 
 package com.havanki.doppio;
 
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
@@ -47,10 +48,12 @@ public class Server {
   }
 
   private ServerSocket serverSocket;
+  private AccessLogger accessLogger;
 
   public void start() throws Exception {
     serverSocket = SSLServerSocketFactory.getDefault()
       .createServerSocket(serverProps.getPort());
+    accessLogger = new AccessLogger(serverProps.getLogDir());
 
     SSLParameters sslParameters =
         SSLContext.getDefault().getDefaultSSLParameters();
@@ -61,10 +64,17 @@ public class Server {
       while (true) {
         LOG.debug("Accepting connection");
         Socket clientSocket = serverSocket.accept();
-        executorService.submit(new RequestHandler(serverProps, clientSocket));
+        executorService.submit(new RequestHandler(serverProps, accessLogger,
+                                                  clientSocket));
       }
     } catch (SocketException e) {
       LOG.error("Exception while accepting new connection", e);
+    } finally {
+      try {
+        accessLogger.close();
+      } catch (IOException e) {
+        LOG.warn("Failed to close access log", e);
+      }
     }
   }
 
