@@ -22,7 +22,7 @@ $ keytool -genkeypair -keystore doppio.jks -storepass doppio -keyalg EC
 
 Use a common name that matches your hostname.
 
-Then, create a properties file. Use [doppio-example.properties](doppio-example.properties) as an example. Only the root directory is required.
+Then, create a properties file. Use [doppio-example.properties](doppio-example.properties) as an example. Only the host name is required; it must match the name on the server certificate.
 
 Finally, run the JAR.
 
