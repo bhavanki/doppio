@@ -22,6 +22,9 @@ package com.havanki.doppio;
 import java.net.FileNameMap;
 import java.net.URLConnection;
 
+/**
+ * A resolver for file content types.
+ */
 public class ContentTypeResolver {
 
   private static final String GMI_SUFFIX = ".gmi";
@@ -33,6 +36,14 @@ public class ContentTypeResolver {
   private static final FileNameMap FILE_NAME_MAP =
       URLConnection.getFileNameMap();
 
+  /**
+   * Gets the content type for a file, based on just its filename. This relies
+   * mostly on Java's built-in MIME type detection, but adds support for .gmi
+   * and .gemini as text/gemini.
+   *
+   * @param  fileName name of file with content
+   * @return          content type
+   */
   public String getContentTypeFor(String fileName) {
     if (fileName.endsWith(GMI_SUFFIX) ||
         fileName.endsWith(GEMINI_SUFFIX)) {
@@ -41,6 +52,11 @@ public class ContentTypeResolver {
     return FILE_NAME_MAP.getContentTypeFor(fileName);
   }
 
+  /**
+   * Gets the filename suffixes recognized as text/gemini.
+   *
+   * @return text/gemini filename suffixes
+   */
   public String[] getGeminiSuffixes() {
     return GEMINI_SUFFIXES;
   }

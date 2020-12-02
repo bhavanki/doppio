@@ -34,6 +34,10 @@ import java.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * A manager for the server access log. The log follows the Apache httpd common
+ * log format.
+ */
 public class AccessLogger implements Closeable {
 
   private static final Logger LOG = LoggerFactory.getLogger(AccessLogger.class);
@@ -41,6 +45,13 @@ public class AccessLogger implements Closeable {
   private final FileWriter accessLogWriter;
   private boolean closed;
 
+  /**
+   * Creates a new logger. If the log directory is null, this logger does not
+   * log anything.
+   *
+   * @param  logDir      directory where access log is written
+   * @throws IOException if the access log cannot be opened
+   */
   public AccessLogger(Path logDir) throws IOException {
     if (logDir == null) {
       accessLogWriter = null;
@@ -52,6 +63,11 @@ public class AccessLogger implements Closeable {
     closed = false;
   }
 
+  /**
+   * Closes the access log.
+   *
+   * @throws IOException if the log cannot be closed
+   */
   public synchronized void close() throws IOException {
     if (closed) {
       return;
@@ -68,10 +84,25 @@ public class AccessLogger implements Closeable {
     DateTimeFormatter.ofPattern("(dd/MMM/yyyy:HH:mm:ss Z)")
       .withZone(ZoneId.systemDefault());
 
+  /**
+   * Logs an error.
+   *
+   * @param socket     request socket
+   * @param request    request text
+   * @param statusCode response status code
+   */
   public void logError(Socket socket, String request, int statusCode) {
     log(socket, request, statusCode, 0);
   }
 
+  /**
+   * Logs a successful access.
+   *
+   * @param socket           request socket
+   * @param request          request text
+   * @param statusCode       response status code
+   * @param responseBodySize the size of the response body, in bytes
+   */
   public synchronized void log(Socket socket, String request, int statusCode,
                                long responseBodySize) {
     if (closed) {

@@ -37,6 +37,9 @@ import javax.net.ssl.SSLServerSocketFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * A Gemini server.
+ */
 public class Server {
 
   private static final Logger LOG = LoggerFactory.getLogger(Server.class);
@@ -44,6 +47,11 @@ public class Server {
   private final ServerProperties serverProps;
   private final ExecutorService executorService;
 
+  /**
+   * Creates a new server.
+   *
+   * @param  serverProps server properties
+   */
   public Server(ServerProperties serverProps) {
     this.serverProps = serverProps;
     executorService =
@@ -53,11 +61,20 @@ public class Server {
   private ServerSocket serverSocket;
   private AccessLogger accessLogger;
 
+  /**
+   * Starts the server in the calling thread. This method exits when the server
+   * is shutting down.
+   *
+   * @throws Exception
+   */
   public void start() throws Exception {
     serverSocket = SSLServerSocketFactory.getDefault()
       .createServerSocket(serverProps.getPort());
     accessLogger = new AccessLogger(serverProps.getLogDir());
 
+    // Set some custom SSL parameters:
+    // - require TLS 1.3 or 1.2
+    // - require SNI with an exact match for the server's host
     SSLParameters sslParameters =
         SSLContext.getDefault().getDefaultSSLParameters();
     sslParameters.setProtocols(new String[] { "TLSv1.3", "TLSv1.2" });
@@ -66,7 +83,11 @@ public class Server {
     sslParameters.setSNIMatchers(Collections.singletonList(sniMatcher));
     ((SSLServerSocket) serverSocket).setSSLParameters(sslParameters);
 
+    LOG.info("Server listening on port {}", serverProps.getPort());
     try {
+      // Accept connections and hand them off to request handlers until there
+      // is a SocketException, which should indicate that the server is
+      // shutting down.
       while (true) {
         LOG.debug("Accepting connection");
         Socket clientSocket = serverSocket.accept();
@@ -84,7 +105,15 @@ public class Server {
     }
   }
 
+  /**
+   * Shuts down the server.
+   */
   public void shutdown() {
     executorService.shutdown();
+    try {
+      serverSocket.close();
+    } catch (IOException e) {
+      LOG.warn("Failed to close server socket", e);
+    }
   }
 }

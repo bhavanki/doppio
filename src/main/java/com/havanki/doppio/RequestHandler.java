@@ -37,6 +37,10 @@ import javax.net.ssl.SSLSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * A handler for a single request. An instance of a handler is run for each
+ * incoming request, in its own thread.
+ */
 public class RequestHandler implements Runnable {
 
   private static final Logger LOG = LoggerFactory.getLogger(RequestHandler.class);
@@ -51,6 +55,13 @@ public class RequestHandler implements Runnable {
   private final AccessLogger accessLogger;
   private final Socket socket;
 
+  /**
+   * Creates a request handler.
+   *
+   * @param  serverProps  server properties
+   * @param  accessLogger access logger
+   * @param  socket       client socket
+   */
   public RequestHandler(ServerProperties serverProps,
                         AccessLogger accessLogger,
                         Socket socket) {
@@ -61,12 +72,15 @@ public class RequestHandler implements Runnable {
 
   @Override
   public void run() {
+    // Open input and output streams for the socket.
     try (InputStreamReader isr =
             new InputStreamReader(socket.getInputStream(),
                                   StandardCharsets.UTF_8);
          BufferedReader in = new BufferedReader(isr);
          OutputStream os = socket.getOutputStream();
          BufferedOutputStream out = new BufferedOutputStream(os)) {
+
+      // Read the single-line Gemini request and parse it as a URI.
       String request = in.readLine().trim();
       URI uri;
       try {
@@ -78,6 +92,8 @@ public class RequestHandler implements Runnable {
         accessLogger.logError(socket, request, StatusCodes.BAD_REQUEST);
         return;
       }
+
+      // Validate that the URI uses a valid scheme and is for this host.
       if (!hasValidScheme(uri)) {
         writeResponseHeader(out, StatusCodes.PROXY_REQUEST_REFUSED,
                             "Only the gemini scheme is supported");
@@ -91,6 +107,8 @@ public class RequestHandler implements Runnable {
         return;
       }
 
+      // Pull the path out of the URI and find the matching path in the root
+      // directory of the server.
       String path = uri.getPath();
       LOG.debug("Path requested: {}", path);
       if (path.length() > 0 && path.charAt(0) == '/') {
@@ -101,11 +119,14 @@ public class RequestHandler implements Runnable {
 
       File resourceFile = resourcePath.toFile();
       if (!resourceFile.exists()) {
+        // If the path does not exist, fail with a NOT_FOUND.
         writeResponseHeader(out, StatusCodes.NOT_FOUND,
                             "Resource not found");
         accessLogger.logError(socket, request, StatusCodes.NOT_FOUND);
         return;
       } else if (resourceFile.isDirectory()) {
+        // If the path is a directory, see if there is an index file to
+        // serve from it.
         File resourceDir = resourceFile;
         resourceFile = null;
         for (String suffix : contentTypeResolver.getGeminiSuffixes()) {
@@ -121,9 +142,12 @@ public class RequestHandler implements Runnable {
         }
       }
 
+      // Find the file's content type for the response header.
       String fileName = resourceFile.getName();
       String contentType = contentTypeResolver.getContentTypeFor(fileName);
 
+      // Write out a SUCCESS response header and then the file contents as
+      // the response body.
       writeResponseHeader(out, StatusCodes.SUCCESS, contentType);
       long bytesWritten = writeFile(out, resourceFile);
       accessLogger.log(socket, request, StatusCodes.SUCCESS, bytesWritten);

@@ -23,6 +23,9 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.Properties;
 
+/**
+ * Server configuration properties.
+ */
 public class ServerProperties {
 
   private static final Path DEFAULT_ROOT = Path.of("/var/gemini");
@@ -36,6 +39,11 @@ public class ServerProperties {
   private final int numThreads;
   private final Path logDir;
 
+  /**
+   * Creates a new set of server properties from Java properties.
+   *
+   * @param  props Java properties
+   */
   public ServerProperties(Properties props) {
     root = getPathProperty(props, "root", DEFAULT_ROOT);
     host = props.getProperty("host");
@@ -60,22 +68,47 @@ public class ServerProperties {
     return Integer.parseInt(props.getProperty(key));
   }
 
+  /**
+   * Gets the root (directory) for the server.
+   *
+   * @return root
+   */
   public Path getRoot() {
     return root;
   }
 
+  /**
+   * Gets the host for the server.
+   *
+   * @return host
+   */
   public String getHost() {
     return host;
   }
 
+  /**
+   * Gets the listening port for the server.
+   *
+   * @return port
+   */
   public int getPort() {
     return port;
   }
 
+  /**
+   * Gets the number of server threads handling requests.
+   *
+   * @return number of server threads
+   */
   public int getNumThreads() {
     return numThreads;
   }
 
+  /**
+   * Gets the log directory for the server.
+   *
+   * @return log directory
+   */
   public Path getLogDir() {
     return logDir;
   }

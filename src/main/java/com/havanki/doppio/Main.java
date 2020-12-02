@@ -22,6 +22,10 @@ package com.havanki.doppio;
 import java.io.FileReader;
 import java.util.Properties;
 
+/**
+ * The main class for Doppio. The single argument is the path to the server
+ * properties file.
+ */
 public class Main {
 
   public static void main(String[] args) throws Exception {
