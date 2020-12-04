@@ -45,7 +45,6 @@ public class RequestHandler implements Runnable {
 
   private static final Logger LOG = LoggerFactory.getLogger(RequestHandler.class);
 
-  private static final String GEMINI_SCHEME = "gemini";
   private static final String CRLF = "\r\n";
 
   private final ContentTypeResolver contentTypeResolver =
@@ -54,6 +53,7 @@ public class RequestHandler implements Runnable {
   private final ServerProperties serverProps;
   private final AccessLogger accessLogger;
   private final Socket socket;
+  private final RequestParser requestParser;
 
   /**
    * Creates a request handler.
@@ -68,6 +68,8 @@ public class RequestHandler implements Runnable {
     this.serverProps = serverProps;
     this.accessLogger = accessLogger;
     this.socket = socket;
+
+    requestParser = new RequestParser(serverProps.getHost());
   }
 
   @Override
@@ -84,26 +86,9 @@ public class RequestHandler implements Runnable {
       String request = in.readLine().trim();
       URI uri;
       try {
-        uri = new URI(request);
-        LOG.debug("Request URI: {}", uri);
-      } catch (URISyntaxException e) {
-        writeResponseHeader(out, StatusCodes.BAD_REQUEST,
-                            "Invalid request URI");
-        accessLogger.logError(socket, request, StatusCodes.BAD_REQUEST);
-        return;
-      }
-
-      // Validate that the URI uses a valid scheme and is for this host.
-      if (!hasValidScheme(uri)) {
-        writeResponseHeader(out, StatusCodes.PROXY_REQUEST_REFUSED,
-                            "Only the gemini scheme is supported");
-        accessLogger.logError(socket, request, StatusCodes.PROXY_REQUEST_REFUSED);
-        return;
-      }
-      if (!hasMatchingHost(uri)) {
-        writeResponseHeader(out, StatusCodes.PROXY_REQUEST_REFUSED,
-                            "Invalid host");
-        accessLogger.logError(socket, request, StatusCodes.PROXY_REQUEST_REFUSED);
+        uri = requestParser.parse(request);
+      } catch (RequestParser.RequestParserException e) {
+        error(out, e.getStatusCode(), e.getMessage(), request);
         return;
       }
 
@@ -120,9 +105,7 @@ public class RequestHandler implements Runnable {
       File resourceFile = resourcePath.toFile();
       if (!resourceFile.exists()) {
         // If the path does not exist, fail with a NOT_FOUND.
-        writeResponseHeader(out, StatusCodes.NOT_FOUND,
-                            "Resource not found");
-        accessLogger.logError(socket, request, StatusCodes.NOT_FOUND);
+        error(out, StatusCodes.NOT_FOUND, "Resource not found", request);
         return;
       } else if (resourceFile.isDirectory()) {
         // If the path is a directory, see if there is an index file to
@@ -136,9 +119,8 @@ public class RequestHandler implements Runnable {
           }
         }
         if (resourceFile == null) {
-          writeResponseHeader(out, StatusCodes.NOT_FOUND,
-                              "Index file not found");
-          accessLogger.logError(socket, request, StatusCodes.NOT_FOUND);
+          error(out, StatusCodes.NOT_FOUND, "Index file not found", request);
+          return;
         }
       }
 
@@ -164,16 +146,11 @@ public class RequestHandler implements Runnable {
 
   private static final String RESPONSE_HEADER_FORMAT = "%d %s" + CRLF;
 
-  private boolean hasValidScheme(URI uri) {
-    String scheme = uri.getScheme();
-    if (uri == null) {
-      return true;
-    }
-    return (GEMINI_SCHEME.equals(scheme));
-  }
-
-  private boolean hasMatchingHost(URI uri) {
-    return serverProps.getHost().equalsIgnoreCase(uri.getHost());
+  private void error(BufferedOutputStream out, int statusCode, String meta,
+                     String request)
+    throws IOException {
+    writeResponseHeader(out, statusCode, meta);
+    accessLogger.logError(socket, request, statusCode);
   }
 
   private void writeResponseHeader(BufferedOutputStream out, int statusCode,
