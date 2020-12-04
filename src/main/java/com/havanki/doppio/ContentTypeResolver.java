@@ -21,6 +21,7 @@ package com.havanki.doppio;
 
 import java.net.FileNameMap;
 import java.net.URLConnection;
+import java.util.List;
 
 /**
  * A resolver for file content types.
@@ -29,9 +30,15 @@ public class ContentTypeResolver {
 
   private static final String GMI_SUFFIX = ".gmi";
   private static final String GEMINI_SUFFIX = ".gemini";
-  private static final String[] GEMINI_SUFFIXES = {
-    GMI_SUFFIX, GEMINI_SUFFIX
-  };
+  private static final List<String> GEMINI_SUFFIXES = List.of(
+    GMI_SUFFIX,
+    GEMINI_SUFFIX
+  );
+
+  /**
+   * The default content type to return when all else fails.
+   */
+  public static final String DEFAULT_CONTENT_TYPE = "application/octet-stream";
 
   private static final FileNameMap FILE_NAME_MAP =
       URLConnection.getFileNameMap();
@@ -39,7 +46,10 @@ public class ContentTypeResolver {
   /**
    * Gets the content type for a file, based on just its filename. This relies
    * mostly on Java's built-in MIME type detection, but adds support for .gmi
-   * and .gemini as text/gemini.
+   * and .gemini as text/gemini.<p>
+   *
+   * If none of the usual detection techniques work, then this method returns
+   * {@link #DEFAULT_CONTENT_TYPE}.
    *
    * @param  fileName name of file with content
    * @return          content type
@@ -49,7 +59,8 @@ public class ContentTypeResolver {
         fileName.endsWith(GEMINI_SUFFIX)) {
       return "text/gemini";
     }
-    return FILE_NAME_MAP.getContentTypeFor(fileName);
+    String contentType = FILE_NAME_MAP.getContentTypeFor(fileName);
+    return contentType != null ? contentType : DEFAULT_CONTENT_TYPE;
   }
 
   /**
@@ -57,7 +68,7 @@ public class ContentTypeResolver {
    *
    * @return text/gemini filename suffixes
    */
-  public String[] getGeminiSuffixes() {
+  public Iterable<String> getGeminiSuffixes() {
     return GEMINI_SUFFIXES;
   }
 }

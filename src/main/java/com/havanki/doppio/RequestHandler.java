@@ -127,6 +127,7 @@ public class RequestHandler implements Runnable {
       // Find the file's content type for the response header.
       String fileName = resourceFile.getName();
       String contentType = contentTypeResolver.getContentTypeFor(fileName);
+      LOG.debug("Detected content type: {}", contentType);
 
       // Write out a SUCCESS response header and then the file contents as
       // the response body.

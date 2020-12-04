@@ -24,17 +24,25 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.net.URI;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class RequestParserTest {
 
   private static final String HOST = "gemini.example.com";
 
+  private RequestParser requestParser;
+
+  @BeforeEach
+  public void beforeEach() {
+    requestParser = new RequestParser(HOST);
+  }
+
   @Test
   public void testSuccess() throws Exception {
     String request = "gemini://gemini.example.com/foo";
 
-    URI uri = new RequestParser(HOST).parse(request);
+    URI uri = requestParser.parse(request);
 
     assertEquals(new URI(request), uri);
   }
@@ -45,7 +53,7 @@ public class RequestParserTest {
 
     RequestParser.RequestParserException e =
         assertThrows(RequestParser.RequestParserException.class,
-                     () -> new RequestParser(HOST).parse(request));
+                     () -> requestParser.parse(request));
 
     assertEquals("Invalid request URI", e.getMessage());
     assertEquals(StatusCodes.BAD_REQUEST, e.getStatusCode());
@@ -57,7 +65,7 @@ public class RequestParserTest {
 
     RequestParser.RequestParserException e =
         assertThrows(RequestParser.RequestParserException.class,
-                     () -> new RequestParser(HOST).parse(request));
+                     () -> requestParser.parse(request));
 
     assertEquals("Only the gemini scheme is supported", e.getMessage());
     assertEquals(StatusCodes.PROXY_REQUEST_REFUSED, e.getStatusCode());
@@ -69,7 +77,7 @@ public class RequestParserTest {
 
     RequestParser.RequestParserException e =
         assertThrows(RequestParser.RequestParserException.class,
-                     () -> new RequestParser(HOST).parse(request));
+                     () -> requestParser.parse(request));
 
     assertEquals("Invalid host", e.getMessage());
     assertEquals(StatusCodes.PROXY_REQUEST_REFUSED, e.getStatusCode());
