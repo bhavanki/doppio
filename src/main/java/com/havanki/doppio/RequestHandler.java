@@ -23,6 +23,7 @@ import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -74,6 +75,10 @@ public class RequestHandler implements Runnable {
 
   @Override
   public void run() {
+    String request = null;
+    int statusCode = StatusCodes.PERMANENT_FAILURE;
+    long responseBodySize = 0;
+
     // Open input and output streams for the socket.
     try (InputStreamReader isr =
             new InputStreamReader(socket.getInputStream(),
@@ -83,12 +88,13 @@ public class RequestHandler implements Runnable {
          BufferedOutputStream out = new BufferedOutputStream(os)) {
 
       // Read the single-line Gemini request and parse it as a URI.
-      String request = in.readLine().trim();
+      request = in.readLine().trim();
       URI uri;
       try {
         uri = requestParser.parse(request);
       } catch (RequestParser.RequestParserException e) {
-        error(out, e.getStatusCode(), e.getMessage(), request);
+        statusCode = e.getStatusCode();
+        writeResponseHeader(out, statusCode, e.getMessage());
         return;
       }
 
@@ -99,15 +105,85 @@ public class RequestHandler implements Runnable {
       if (path.length() > 0 && path.charAt(0) == '/') {
         path = path.substring(1);
       }
+      boolean isCgi = serverProps.getCgiDir() != null &&
+        Path.of(path).startsWith(serverProps.getCgiDir());
       Path resourcePath = serverProps.getRoot().resolve(path);
       LOG.debug("Resolved path: {}", resourcePath);
+      LOG.debug("CGI? {}", isCgi);
 
       File resourceFile = resourcePath.toFile();
       if (!resourceFile.exists()) {
         // If the path does not exist, fail with a NOT_FOUND.
-        error(out, StatusCodes.NOT_FOUND, "Resource not found", request);
+        statusCode = StatusCodes.NOT_FOUND;
+        writeResponseHeader(out, statusCode, "Resource not found");
         return;
-      } else if (resourceFile.isDirectory()) {
+      }
+
+      // Handle a CGI script invocation.
+      if (isCgi) {
+        // Accessing a directory isn't valid for CGI.
+        if (resourceFile.isDirectory()) {
+          statusCode = StatusCodes.BAD_REQUEST;
+          writeResponseHeader(out, statusCode, "Cannot access directory over CGI");
+          return;
+        }
+
+        // Start a process to run the CGI script.
+        ProcessBuilder pb;
+        try {
+          pb = new CgiProcessBuilderFactory()
+            .createCgiProcessBuilder(resourceFile, uri, socket, serverProps);
+        } catch (IOException e) {
+          statusCode = StatusCodes.TEMPORARY_FAILURE;
+          writeResponseHeader(out, statusCode, "Failed to resolve CGI resource path");
+          return;
+        }
+        LOG.debug("Executing CGI {}", pb.command());
+        Process p = pb.start();
+
+        // Process the script output.
+        try {
+          try (InputStream processStdout = p.getInputStream()) {
+
+            // Consume the response headers.
+            CgiResponseMetadata responseMetadata;
+            try {
+              responseMetadata = new CgiResponseHeaderReader()
+                .consumeHeaders(processStdout);
+            } catch (IOException e) {
+              LOG.error("CGI script returned invalid response headers", e);
+              statusCode = StatusCodes.CGI_ERROR;
+              writeResponseHeader(out, statusCode,
+                                  "CGI script returned invalid response headers");
+              return;
+            }
+
+            // Write out a response header with the status code (if any) and
+            // the content type reported by the script, and then pipe its body
+            // content out.
+            statusCode = responseMetadata.getStatusCode();
+            writeResponseHeader(out, statusCode,
+                                responseMetadata.getContentType());
+            responseBodySize = processStdout.transferTo(out);
+          }
+        } finally {
+          // Wait for the script process to exit.
+          // TBD: Handle when the script fails after it has started generating
+          // output.
+          try {
+            int exitCode = p.waitFor();
+            if (exitCode != 0) {
+              LOG.warn("CGI exited with code {}", exitCode);
+            }
+          } catch (InterruptedException e) {
+            LOG.info("Interrupted while waiting for CGI to complete");
+          }
+        }
+        return;
+      }
+
+      // At this point, the resource is treated as static.
+      if (resourceFile.isDirectory()) {
         // If the path is a directory, see if there is an index file to
         // serve from it.
         File resourceDir = resourceFile;
@@ -119,7 +195,8 @@ public class RequestHandler implements Runnable {
           }
         }
         if (resourceFile == null) {
-          error(out, StatusCodes.NOT_FOUND, "Index file not found", request);
+          statusCode = StatusCodes.NOT_FOUND;
+          writeResponseHeader(out, statusCode, "Index file not found");
           return;
         }
       }
@@ -131,28 +208,32 @@ public class RequestHandler implements Runnable {
 
       // Write out a SUCCESS response header and then the file contents as
       // the response body.
-      writeResponseHeader(out, StatusCodes.SUCCESS, contentType);
-      long bytesWritten = writeFile(out, resourceFile);
-      accessLogger.log(socket, request, StatusCodes.SUCCESS, bytesWritten);
+      statusCode = StatusCodes.SUCCESS;
+      writeResponseHeader(out, statusCode, contentType);
+      responseBodySize = writeFile(out, resourceFile);
     } catch (IOException e) {
       LOG.error("Failed to handle request", e);
+      statusCode = StatusCodes.TEMPORARY_FAILURE;
+    } catch (RuntimeException e) {
+      LOG.error("Unexpected exception", e);
+      statusCode = StatusCodes.PERMANENT_FAILURE;
+      throw e;
     } finally {
       try {
         socket.close();
       } catch (IOException e) {
         LOG.debug("Failed to close socket", e);
       }
+
+      // Write to the access log.
+      if (request == null) {
+        request = "?";
+      }
+      accessLogger.log(socket, request, statusCode, responseBodySize);
     }
   }
 
   private static final String RESPONSE_HEADER_FORMAT = "%d %s" + CRLF;
-
-  private void error(BufferedOutputStream out, int statusCode, String meta,
-                     String request)
-    throws IOException {
-    writeResponseHeader(out, statusCode, meta);
-    accessLogger.logError(socket, request, statusCode);
-  }
 
   private void writeResponseHeader(BufferedOutputStream out, int statusCode,
                                    String meta)

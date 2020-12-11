@@ -85,17 +85,6 @@ public class AccessLogger implements Closeable {
       .withZone(ZoneId.systemDefault());
 
   /**
-   * Logs an error.
-   *
-   * @param socket     request socket
-   * @param request    request text
-   * @param statusCode response status code
-   */
-  public void logError(Socket socket, String request, int statusCode) {
-    log(socket, request, statusCode, 0);
-  }
-
-  /**
    * Logs a successful access.
    *
    * @param socket           request socket

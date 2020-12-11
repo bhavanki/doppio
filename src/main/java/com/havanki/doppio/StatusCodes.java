@@ -28,7 +28,10 @@ public final class StatusCodes {
   }
 
   public static final int SUCCESS = 20;
+  public static final int TEMPORARY_FAILURE = 40;
+  public static final int CGI_ERROR = 42;
   public static final int NOT_FOUND = 51;
+  public static final int PERMANENT_FAILURE = 50;
   public static final int PROXY_REQUEST_REFUSED = 53;
   public static final int BAD_REQUEST = 59;
 }
