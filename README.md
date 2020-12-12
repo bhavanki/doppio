@@ -31,6 +31,29 @@ $ java -Djavax.net.ssl.keyStore=doppio.jks -Djavax.net.ssl.keyStorePassword=dopp
   -jar target/doppio-*.jar doppio.properties
 ```
 
+## Static File Support
+
+Place static resources in the configured root directory. Resource content is streamed to clients exactly as it is in its resource. Notably, Doppio does not convert line endings in text files, including those that use CR ('\r') alone.
+
+Content type is detected using Java's built-in mechanism, with additional support for recognizing _.gmi_ and _.gemini_ files as text/gemini. There is no charset detection for text files.
+
+When a directory is requested, Doppio looks for an index file, ending with any supported filename suffix for text/gemini files (e.g., _index.gmi_), and returns the first one it finds. Otherwise, it returns a 51 (not found) response.
+
+## CGI Support
+
+Place CGI scripts in the configured CGI directory. If no directory is configured, Doppio does not run scripts, even if they reside in a directory that seems like a valid CGI directory (e.g., some "cgi-bin" directory).
+
+Doppio tries to follow [RFC 3875](https://tools.ietf.org/html/rfc3875) in its CGI support. Here are salient limitations and variations from the standard in the implementation.
+
+* UTF-8 is expected for script response headers.
+* Not all meta-variables (environment variables) are supported. The standard variable REQUEST_METHOD is not applicable to Gemini. (More info to come here.)
+* Request bodies are not supported, since Gemini does not support them. The URI query string is the only input mechanism.
+* NPH (Non-Parsed Header) scripts are not supported.
+* Local redirect responses are not supported.
+* Doppio does not check if a client redirect response is well-formed in terms of response headers.
+* Client redirect responses with document are not supported, because Gemini does not permit response bodies in redirects.
+* Status codes 20 and 30 are used as defaults for successful responses and redirects, instead of (HTTP) 200 and 302. The "bad request" status code is 59 instead of (HTTP) 400.
+
 ## License
 
 [GNU Affero General Public License v3](LICENSE)
