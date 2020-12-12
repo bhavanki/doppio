@@ -28,6 +28,7 @@ public final class StatusCodes {
   }
 
   public static final int SUCCESS = 20;
+  public static final int REDIRECT_TEMPORARY = 30;
   public static final int TEMPORARY_FAILURE = 40;
   public static final int CGI_ERROR = 42;
   public static final int NOT_FOUND = 51;

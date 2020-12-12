@@ -1,12 +1,15 @@
 package com.havanki.doppio;
 
+import java.net.URI;
+
 /**
  * Metadata gathered from the headers of a proper CGI response.
  */
 public class CgiResponseMetadata {
   private String contentType;
-  private int statusCode = StatusCodes.SUCCESS;
+  private Integer statusCode;
   private String reasonPhrase;
+  private URI location;
 
   public void setContentType(String contentType) {
     this.contentType = contentType;
@@ -16,11 +19,11 @@ public class CgiResponseMetadata {
     return contentType;
   }
 
-  public void setStatusCode(int statusCode) {
+  public void setStatusCode(Integer statusCode) {
     this.statusCode = statusCode;
   }
 
-  public int getStatusCode() {
+  public Integer getStatusCode() {
     return statusCode;
   }
 
@@ -30,5 +33,13 @@ public class CgiResponseMetadata {
 
   public String getReasonPhrase() {
     return reasonPhrase;
+  }
+
+  public void setLocation(URI location) {
+    this.location = location;
+  }
+
+  public URI getLocation() {
+    return location;
   }
 }

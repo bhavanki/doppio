@@ -34,20 +34,20 @@ public class CgiResponseHeaderReaderTest {
     CgiResponseMetadata metadata = reader.consumeHeaders(in);
 
     assertEquals("text/plain", metadata.getContentType());
-    assertEquals(StatusCodes.SUCCESS, metadata.getStatusCode());
+    assertNull(metadata.getStatusCode());
     assertNull(metadata.getReasonPhrase());
 
     verifyRemaining(in, "Hello");
   }
 
   @Test
-  public void testNoContentType() throws Exception {
+  public void testNoContentTypeOrLocation() throws Exception {
     in = newInputStream("Status: 21\n" +
                         "\n" +
                         "Hello");
 
     assertThrows(IOException.class, () -> reader.consumeHeaders(in),
-                 "Content-Type response header not provided");
+                 "Content-Type or Location response header not provided");
   }
 
 
@@ -122,7 +122,7 @@ public class CgiResponseHeaderReaderTest {
   }
 
   @Test
-  public void testNoStatus() throws Exception {
+  public void testEmptyStatus() throws Exception {
     in = newInputStream("Content-Type: text/plain\n" +
                         "Status:\n" +
                         "\n" +
@@ -142,6 +142,58 @@ public class CgiResponseHeaderReaderTest {
   }
 
   @Test
+  public void testRedirect() throws Exception {
+    in = newInputStream("Location: gemini://gemini.example.com/foo");
+
+    CgiResponseMetadata metadata = reader.consumeHeaders(in);
+
+    assertEquals("gemini://gemini.example.com/foo",
+                 metadata.getLocation().toString());
+    assertNull(metadata.getStatusCode());
+    assertNull(metadata.getReasonPhrase());
+  }
+
+  @Test
+  public void testRedirectWithExplicitStatus() throws Exception {
+    in = newInputStream("Location: gemini://gemini.example.com/foo\n" +
+                        "Status: 30 Go away");
+
+    CgiResponseMetadata metadata = reader.consumeHeaders(in);
+
+    assertEquals("gemini://gemini.example.com/foo",
+                 metadata.getLocation().toString());
+    assertEquals(StatusCodes.REDIRECT_TEMPORARY, metadata.getStatusCode());
+    assertEquals("Go away", metadata.getReasonPhrase());
+  }
+
+  @Test
+  public void testRedirectWithInvalidURI() throws Exception {
+    in = newInputStream("Location: ://gemini.example.com/foo");
+
+    assertThrows(IOException.class, () -> reader.consumeHeaders(in),
+                "Location response header has invalid URI " +
+                "://gemini.example.com/foo");
+  }
+
+  @Test
+  public void testRedirectWithEmptyURI() throws Exception {
+    in = newInputStream("Location:");
+
+    assertThrows(IOException.class, () -> reader.consumeHeaders(in),
+                "Location response header has empty value");
+  }
+
+  @Test
+  public void testRedirectWithIncorrectStatusCode() throws Exception {
+    in = newInputStream("Location: gemini://gemini.example.com/foo\n" +
+                        "Status: 31 Go away");
+
+    assertThrows(IOException.class, () -> reader.consumeHeaders(in),
+                "CGI response is a redirect, but its status code is 31 " +
+                "instead of the required 30");
+  }
+
+  @Test
   public void testSkipUnknownHeader() throws Exception {
     in = newInputStream("Content-Type: text/plain\n" +
                         "Color: vermillion\n" +
@@ -151,7 +203,7 @@ public class CgiResponseHeaderReaderTest {
     CgiResponseMetadata metadata = reader.consumeHeaders(in);
 
     assertEquals("text/plain", metadata.getContentType());
-    assertEquals(StatusCodes.SUCCESS, metadata.getStatusCode());
+    assertNull(metadata.getStatusCode());
     assertNull(metadata.getReasonPhrase());
 
     verifyRemaining(in, "Hello");

@@ -145,7 +145,9 @@ public class RequestHandler implements Runnable {
         try {
           try (InputStream processStdout = p.getInputStream()) {
 
-            // Consume the response headers.
+            // Consume the response headers. If the script fails before it
+            // starts generating output, then expected headers will not be
+            // found and the server will return a CGI error.
             CgiResponseMetadata responseMetadata;
             try {
               responseMetadata = new CgiResponseHeaderReader()
@@ -158,18 +160,40 @@ public class RequestHandler implements Runnable {
               return;
             }
 
-            // Write out a response header with the status code (if any) and
-            // the content type reported by the script, and then pipe its body
-            // content out.
-            statusCode = responseMetadata.getStatusCode();
-            writeResponseHeader(out, statusCode,
-                                responseMetadata.getContentType());
-            responseBodySize = processStdout.transferTo(out);
+            // Check if the response indicates a redirect.
+            boolean isRedirect = responseMetadata.getLocation() != null;
+
+            // Determine the response status code. If not explicitly provided,
+            // default to 30 for a redirect and 20 otherwise.
+            Integer statusCodeInt = responseMetadata.getStatusCode();
+            if (statusCodeInt == null) {
+                statusCode = isRedirect ?
+                  StatusCodes.REDIRECT_TEMPORARY : StatusCodes.SUCCESS;
+            } else {
+              statusCode = statusCodeInt.intValue();
+            }
+
+            // Determine the meta string for the response. For a redirect, this
+            // is the URI to redirect to. Otherwise, it's the content type of
+            // the response body.
+            String meta;
+            if (isRedirect) {
+              meta = responseMetadata.getLocation().toString();
+            } else {
+              meta = responseMetadata.getContentType();
+            }
+
+            // Write out a response header.
+            writeResponseHeader(out, statusCode, meta);
+
+            // Pipe the body content out when the response is not a redirect.
+            if (!isRedirect) {
+              responseBodySize = processStdout.transferTo(out);
+            }
           }
         } finally {
-          // Wait for the script process to exit.
-          // TBD: Handle when the script fails after it has started generating
-          // output.
+          // Wait for the script process to exit. If the script fails while it
+          // is generating output, transfer of the response body just stops.
           try {
             int exitCode = p.waitFor();
             if (exitCode != 0) {

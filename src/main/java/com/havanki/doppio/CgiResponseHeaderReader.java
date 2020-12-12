@@ -2,6 +2,8 @@ package com.havanki.doppio;
 
 import java.io.InputStream;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 
 import org.slf4j.Logger;
@@ -20,6 +22,9 @@ public class CgiResponseHeaderReader {
 
   private static final String STATUS_PREFIX = "Status:";
   private static final int STATUS_PREFIX_LEN = STATUS_PREFIX.length();
+
+  private static final String LOCATION_PREFIX = "Location:";
+  private static final int LOCATION_PREFIX_LEN = LOCATION_PREFIX.length();
 
   /**
    * Consumes CGI response headers from the given input stream, which is
@@ -46,7 +51,7 @@ public class CgiResponseHeaderReader {
         responseMetadata.setContentType(responseHeader
           .substring(CONTENT_TYPE_PREFIX_LEN).trim());
 
-      } else if (responseHeader.startsWith("Status:")) {
+      } else if (responseHeader.startsWith(STATUS_PREFIX)) {
         // Status: <status-code>[ <reason-phrase>]
         String statusValue = responseHeader.substring(STATUS_PREFIX_LEN).trim();
         if (statusValue.isEmpty()) {
@@ -68,14 +73,40 @@ public class CgiResponseHeaderReader {
         if (spidx != -1) {
           responseMetadata.setReasonPhrase(statusValue.substring(spidx + 1));
         }
+
+      } else if (responseHeader.startsWith(LOCATION_PREFIX)) {
+        // Location: <URI>
+        String uriString = responseHeader.substring(LOCATION_PREFIX_LEN).trim();
+        if (uriString.isEmpty()) {
+          throw new IOException("Location response header has empty value");
+        }
+
+        try {
+          responseMetadata.setLocation(new URI (uriString));
+        } catch (URISyntaxException e) {
+          throw new IOException("Location response header has invalid URI " +
+                                uriString);
+        }
       } else {
         LOG.warn("Unsupported CGI response header: {}", responseHeader);
       }
     }
 
-    // Content-Type is required, so fail if it isn't present.
-    if (responseMetadata.getContentType() == null) {
-      throw new IOException("Content-Type response header not provided");
+    // Either Content-Type (ordinary response) or Location (redirect) is
+    // required, so fail if neither one are present.
+    if (responseMetadata.getContentType() == null &&
+        responseMetadata.getLocation() == null) {
+      throw new IOException("Content-Type or Location response header " +
+                            "not provided");
+    }
+    // If a Location header is present, ensure that the status code, if also
+    // present, is for a temporary redirect.
+    if (responseMetadata.getLocation() != null &&
+        responseMetadata.getStatusCode() != null &&
+        responseMetadata.getStatusCode() != StatusCodes.REDIRECT_TEMPORARY) {
+      throw new IOException("CGI response is a redirect, but its status code is " +
+                            responseMetadata.getStatusCode() + " instead of " +
+                            "the required " + StatusCodes.REDIRECT_TEMPORARY);
     }
     return responseMetadata;
   }
