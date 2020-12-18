@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URI;
+import java.security.Principal;
 import java.util.Map;
 
 /**
@@ -12,6 +13,7 @@ import java.util.Map;
  */
 public class CgiProcessBuilderFactory {
 
+  private static final String AUTH_TYPE = "Certificate";   // whatever
   private static final String GATEWAY_INTERFACE = "CGI/1.1";
   private static final String SERVER_PROTOCOL = "GEMINI";  // probably right
   private static final String SERVER_SOFTWARE = "Doppio";  // TBD add version
@@ -20,16 +22,17 @@ public class CgiProcessBuilderFactory {
    * Creates a {@code ProcessBuilder} for a CGI script. This includes setting
    * expected environment variables.
    *
-   * @param  resourceFile script file
-   * @param  uri          original request URI
-   * @param  socket       client socket
-   * @param  serverProps  server properties
-   * @return              process builder
-   * @throws IOException  if the canonical path for the script file cannot be
-   *                      determined
+   * @param  resourceFile  script file
+   * @param  uri           original request URI
+   * @param  socket        client socket
+   * @param  peerPrincipal principal identifying peer, if any
+   * @param  serverProps   server properties
+   * @return               process builder
+   * @throws IOException   if the canonical path for the script file cannot be
+   *                       determined
    */
   public ProcessBuilder createCgiProcessBuilder(File resourceFile, URI uri,
-                                                Socket socket,
+                                                Socket socket, Principal peerPrincipal,
                                                 ServerProperties serverProps)
     throws IOException {
     // Run the resource file as the command. Combine standard output and
@@ -56,8 +59,11 @@ public class CgiProcessBuilderFactory {
       pbenv.put("REMOTE_HOST", remoteSocketAddress.getHostString());
     }
 
-    // pbenv.put("REMOTE_IDENT", ...); TBD
-    // pbenv.put("REMOTE_USER", ...); TBD
+    if (peerPrincipal != null) {
+      pbenv.put("AUTH_TYPE", AUTH_TYPE);
+      pbenv.put("REMOTE_USER", peerPrincipal.getName());
+    }
+
     // REQUEST_METHOD is not applicable to Gemini
     pbenv.put("SCRIPT_NAME", uri.getPath()); // TBD: adjust with PATH_INFO
     pbenv.put("SERVER_NAME", serverProps.getHost());

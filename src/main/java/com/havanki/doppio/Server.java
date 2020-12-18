@@ -21,7 +21,6 @@ package com.havanki.doppio;
 
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.net.Socket;
 import java.net.SocketException;
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
@@ -33,6 +32,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocket;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,6 +81,7 @@ public class Server {
     String hostRegex = serverProps.getHost().replace(".", "\\.");
     SNIMatcher sniMatcher = SNIHostName.createSNIMatcher(hostRegex);
     sslParameters.setSNIMatchers(Collections.singletonList(sniMatcher));
+    sslParameters.setWantClientAuth(true);
     ((SSLServerSocket) serverSocket).setSSLParameters(sslParameters);
 
     LOG.info("Server listening on port {}", serverProps.getPort());
@@ -90,7 +91,7 @@ public class Server {
       // shutting down.
       while (true) {
         LOG.debug("Accepting connection");
-        Socket clientSocket = serverSocket.accept();
+        SSLSocket clientSocket = (SSLSocket) serverSocket.accept();
         executorService.submit(new RequestHandler(serverProps, accessLogger,
                                                   clientSocket));
       }

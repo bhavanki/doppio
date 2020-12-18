@@ -31,6 +31,19 @@ $ java -Djavax.net.ssl.keyStore=doppio.jks -Djavax.net.ssl.keyStorePassword=dopp
   -jar target/doppio-*.jar doppio.properties
 ```
 
+To support TLS client authentication, create a truststore containing imported, trusted certificates of the authorities that sign client certificates (or the client certificates themselves).
+
+```
+$ keytool -importcert -file trustedcert.pem -alias trustedcert \
+  -keystore doppiots.jks
+```
+
+Then, specify the truststore as well when running the JAR.
+
+```
+... -Djavax.net.ssl.trustStore=doppiots.jks -Djavax.net.ssl.trustStorePassword=doppio ...
+```
+
 ## Static File Support
 
 Place static resources in the configured root directory. Resource content is streamed to clients exactly as it is in its resource. Notably, Doppio does not convert line endings in text files, including those that use CR ('\r') alone.

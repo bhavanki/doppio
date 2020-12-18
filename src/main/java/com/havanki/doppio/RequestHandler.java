@@ -29,10 +29,11 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.Principal;
 
+import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSocket;
 
 import org.slf4j.Logger;
@@ -53,7 +54,7 @@ public class RequestHandler implements Runnable {
 
   private final ServerProperties serverProps;
   private final AccessLogger accessLogger;
-  private final Socket socket;
+  private final SSLSocket socket;
   private final RequestParser requestParser;
 
   /**
@@ -65,7 +66,7 @@ public class RequestHandler implements Runnable {
    */
   public RequestHandler(ServerProperties serverProps,
                         AccessLogger accessLogger,
-                        Socket socket) {
+                        SSLSocket socket) {
     this.serverProps = serverProps;
     this.accessLogger = accessLogger;
     this.socket = socket;
@@ -78,6 +79,14 @@ public class RequestHandler implements Runnable {
     String request = null;
     int statusCode = StatusCodes.PERMANENT_FAILURE;
     long responseBodySize = 0;
+
+    // Retrieve the peer principal, if any.
+    Principal peerPrincipal;
+    try {
+      peerPrincipal = socket.getSession().getPeerPrincipal();
+    } catch (SSLPeerUnverifiedException e) {
+      peerPrincipal = null;
+    }
 
     // Open input and output streams for the socket.
     try (InputStreamReader isr =
@@ -132,7 +141,8 @@ public class RequestHandler implements Runnable {
         ProcessBuilder pb;
         try {
           pb = new CgiProcessBuilderFactory()
-            .createCgiProcessBuilder(resourceFile, uri, socket, serverProps);
+            .createCgiProcessBuilder(resourceFile, uri, socket, peerPrincipal,
+                                     serverProps);
         } catch (IOException e) {
           statusCode = StatusCodes.TEMPORARY_FAILURE;
           writeResponseHeader(out, statusCode, "Failed to resolve CGI resource path");
