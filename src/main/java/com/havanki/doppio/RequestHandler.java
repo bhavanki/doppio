@@ -31,7 +31,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.security.Principal;
+import java.security.cert.CertificateExpiredException;
+import java.security.cert.CertificateNotYetValidException;
+import java.security.cert.X509Certificate;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSocket;
@@ -80,12 +82,13 @@ public class RequestHandler implements Runnable {
     int statusCode = StatusCodes.PERMANENT_FAILURE;
     long responseBodySize = 0;
 
-    // Retrieve the peer principal, if any.
-    Principal peerPrincipal;
+    // Retrieve the peer certificate, if any.
+    X509Certificate peerCertificate;
     try {
-      peerPrincipal = socket.getSession().getPeerPrincipal();
+      peerCertificate = (X509Certificate)
+          ((socket.getSession().getPeerCertificates())[0]);
     } catch (SSLPeerUnverifiedException e) {
-      peerPrincipal = null;
+      peerCertificate = null;
     }
 
     // Open input and output streams for the socket.
@@ -114,11 +117,39 @@ public class RequestHandler implements Runnable {
       if (path.length() > 0 && path.charAt(0) == '/') {
         path = path.substring(1);
       }
-      boolean isCgi = serverProps.getCgiDir() != null &&
-        Path.of(path).startsWith(serverProps.getCgiDir());
       Path resourcePath = serverProps.getRoot().resolve(path);
       LOG.debug("Resolved path: {}", resourcePath);
-      LOG.debug("CGI? {}", isCgi);
+
+      // If the resource is in a secure directory, require authentication.
+      // Do this before checking if the resource exists so as not to leak info.
+      boolean isSecure = false;
+      for (Path secureDir : serverProps.getSecureDirs()) {
+        if (Path.of(path).startsWith(secureDir)) {
+          isSecure = true;
+          if (peerCertificate == null) {
+            statusCode = StatusCodes.CLIENT_CERTIFICATE_REQUIRED;
+            writeResponseHeader(out, statusCode, "Authentication required");
+            return;
+          }
+          break;
+        }
+      }
+
+      // If the resource is in a secure directory, validate the peer
+      // certificate.
+      if (isSecure) {
+        try {
+          peerCertificate.checkValidity();
+        } catch (CertificateExpiredException e) {
+          statusCode = StatusCodes.CERTIFICATE_NOT_VALID;
+          writeResponseHeader(out, statusCode, "Certificate has expired");
+          return;
+        } catch (CertificateNotYetValidException e) {
+          statusCode = StatusCodes.CERTIFICATE_NOT_VALID;
+          writeResponseHeader(out, statusCode, "Certificate is not yet valid");
+          return;
+        }
+      }
 
       File resourceFile = resourcePath.toFile();
       if (!resourceFile.exists()) {
@@ -127,6 +158,11 @@ public class RequestHandler implements Runnable {
         writeResponseHeader(out, statusCode, "Resource not found");
         return;
       }
+
+      // Determine if the resource is a CGI script.
+      boolean isCgi = serverProps.getCgiDir() != null &&
+        Path.of(path).startsWith(serverProps.getCgiDir());
+      LOG.debug("CGI? {}", isCgi);
 
       // Handle a CGI script invocation.
       if (isCgi) {
@@ -141,7 +177,7 @@ public class RequestHandler implements Runnable {
         ProcessBuilder pb;
         try {
           pb = new CgiProcessBuilderFactory()
-            .createCgiProcessBuilder(resourceFile, uri, socket, peerPrincipal,
+            .createCgiProcessBuilder(resourceFile, uri, socket, peerCertificate,
                                      serverProps);
         } catch (IOException e) {
           statusCode = StatusCodes.TEMPORARY_FAILURE;

@@ -67,6 +67,14 @@ Doppio tries to follow [RFC 3875](https://tools.ietf.org/html/rfc3875) in its CG
 * Client redirect responses with document are not supported, because Gemini does not permit response bodies in redirects.
 * Status codes 20 and 30 are used as defaults for successful responses and redirects, instead of (HTTP) 200 and 302. The "bad request" status code is 59 instead of (HTTP) 400.
 
+## Secure Directories
+
+Place resources (static or CGI) which should require client authentication in one of the configured secure directories. If no directories are configured, then Doppio itself does not enforce authentication, but CGI scripts may do so on their own.
+
+Doppio validates a client certificate used to authenticate a request only when authentication is required for the requested resource.
+
+_This feature is very basic and may be expanded in the future._
+
 ## License
 
 [GNU Affero General Public License v3](LICENSE)

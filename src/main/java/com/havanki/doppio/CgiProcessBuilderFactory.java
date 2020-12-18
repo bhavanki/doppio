@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URI;
-import java.security.Principal;
+import java.security.cert.X509Certificate;
 import java.util.Map;
 
 /**
@@ -22,17 +22,17 @@ public class CgiProcessBuilderFactory {
    * Creates a {@code ProcessBuilder} for a CGI script. This includes setting
    * expected environment variables.
    *
-   * @param  resourceFile  script file
-   * @param  uri           original request URI
-   * @param  socket        client socket
-   * @param  peerPrincipal principal identifying peer, if any
-   * @param  serverProps   server properties
-   * @return               process builder
-   * @throws IOException   if the canonical path for the script file cannot be
-   *                       determined
+   * @param  resourceFile script file
+   * @param  uri          original request URI
+   * @param  socket       client socket
+   * @param  peerCert     principal identifying peer, if any
+   * @param  serverProps  server properties
+   * @return              process builder
+   * @throws IOException  if the canonical path for the script file cannot be
+   *                      determined
    */
   public ProcessBuilder createCgiProcessBuilder(File resourceFile, URI uri,
-                                                Socket socket, Principal peerPrincipal,
+                                                Socket socket, X509Certificate peerCert,
                                                 ServerProperties serverProps)
     throws IOException {
     // Run the resource file as the command. Combine standard output and
@@ -59,9 +59,9 @@ public class CgiProcessBuilderFactory {
       pbenv.put("REMOTE_HOST", remoteSocketAddress.getHostString());
     }
 
-    if (peerPrincipal != null) {
+    if (peerCert != null) {
       pbenv.put("AUTH_TYPE", AUTH_TYPE);
-      pbenv.put("REMOTE_USER", peerPrincipal.getName());
+      pbenv.put("REMOTE_USER", peerCert.getSubjectX500Principal().getName());
     }
 
     // REQUEST_METHOD is not applicable to Gemini

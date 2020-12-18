@@ -35,4 +35,6 @@ public final class StatusCodes {
   public static final int PERMANENT_FAILURE = 50;
   public static final int PROXY_REQUEST_REFUSED = 53;
   public static final int BAD_REQUEST = 59;
+  public static final int CLIENT_CERTIFICATE_REQUIRED = 60;
+  public static final int CERTIFICATE_NOT_VALID = 62;
 }

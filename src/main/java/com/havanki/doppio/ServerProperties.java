@@ -21,7 +21,10 @@ package com.havanki.doppio;
 
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 /**
  * Server configuration properties.
@@ -33,6 +36,7 @@ public class ServerProperties {
   private static final int DEFAULT_NUM_THREADS = 4;
   private static final Path DEFAULT_CGI_DIR = null;
   private static final Path DEFAULT_LOG_DIR = null;
+  private static final List<Path> DEFAULT_SECURE_DIRS = List.of();
 
   private final Path root;
   private final String host;
@@ -40,6 +44,7 @@ public class ServerProperties {
   private final int numThreads;
   private final Path cgiDir;
   private final Path logDir;
+  private final List<Path> secureDirs;
 
   /**
    * Creates a new set of server properties from Java properties.
@@ -53,6 +58,7 @@ public class ServerProperties {
     numThreads = getIntProperty(props, "numThreads", DEFAULT_NUM_THREADS);
     cgiDir = getPathProperty(props, "cgiDir", DEFAULT_CGI_DIR);
     logDir = getPathProperty(props, "logDir", DEFAULT_LOG_DIR);
+    secureDirs = getPathsProperty(props, "secureDirs", DEFAULT_SECURE_DIRS);
   }
 
   private final Path getPathProperty(Properties props, String key,
@@ -61,6 +67,17 @@ public class ServerProperties {
       return defaultValue;
     }
     return FileSystems.getDefault().getPath(props.getProperty(key));
+  }
+
+  private final List<Path> getPathsProperty(Properties props, String key,
+                                            List<Path> defaultValue) {
+    if (!props.containsKey(key)) {
+      return defaultValue;
+    }
+    return Arrays.stream(props.getProperty(key).split(":"))
+        .filter(s -> !s.isEmpty())
+        .map(p -> FileSystems.getDefault().getPath(p))
+        .collect(Collectors.toList());
   }
 
   private final int getIntProperty(Properties props, String key,
@@ -123,5 +140,14 @@ public class ServerProperties {
    */
   public Path getLogDir() {
     return logDir;
+  }
+
+  /**
+   * Gets the secure directories for the server.
+   *
+   * @return secure directories
+   */
+  public List<Path> getSecureDirs() {
+    return secureDirs;
   }
 }
