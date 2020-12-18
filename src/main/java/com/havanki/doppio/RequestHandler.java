@@ -223,8 +223,9 @@ public class RequestHandler implements Runnable {
         File resourceDir = resourceFile;
         resourceFile = null;
         for (String suffix : contentTypeResolver.getGeminiSuffixes()) {
-          resourceFile = new File(resourceDir, "index" + suffix);
-          if (resourceFile.exists()) {
+          File indexFile = new File(resourceDir, "index" + suffix);
+          if (indexFile.exists()) {
+            resourceFile = indexFile;
             break;
           }
         }
