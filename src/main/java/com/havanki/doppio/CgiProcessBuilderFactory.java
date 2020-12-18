@@ -62,6 +62,9 @@ public class CgiProcessBuilderFactory {
     if (peerCert != null) {
       pbenv.put("AUTH_TYPE", AUTH_TYPE);
       pbenv.put("REMOTE_USER", peerCert.getSubjectX500Principal().getName());
+      // Apache mod_ssl variables
+      pbenv.put("SSL_CLIENT_I_DN", peerCert.getIssuerX500Principal().getName());
+      pbenv.put("SSL_CLIENT_S_DN", peerCert.getSubjectX500Principal().getName());
     }
 
     // REQUEST_METHOD is not applicable to Gemini
