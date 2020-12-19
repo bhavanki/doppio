@@ -62,7 +62,6 @@ Doppio tries to follow [RFC 3875](https://tools.ietf.org/html/rfc3875) in its CG
 * Not all meta-variables (environment variables) are supported. The standard variable REQUEST_METHOD is not applicable to Gemini. (More info to come here.)
 * Request bodies are not supported, since Gemini does not support them. The URI query string is the only input mechanism.
 * NPH (Non-Parsed Header) scripts are not supported.
-* Local redirect responses are not supported.
 * Doppio does not check if a client redirect response is well-formed in terms of response headers.
 * Client redirect responses with document are not supported, because Gemini does not permit response bodies in redirects.
 * Status codes 20 and 30 are used as defaults for successful responses and redirects, instead of (HTTP) 200 and 302. The "bad request" status code is 59 instead of (HTTP) 400.

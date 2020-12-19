@@ -99,8 +99,10 @@ public class RequestHandler implements Runnable {
          OutputStream os = socket.getOutputStream();
          BufferedOutputStream out = new BufferedOutputStream(os)) {
 
-      // Read the single-line Gemini request and parse it as a URI.
+      // Read the single-line Gemini request.
       request = in.readLine().trim();
+
+      // Parse the request as a URI.
       URI uri;
       try {
         uri = requestParser.parse(request);
@@ -110,147 +112,167 @@ public class RequestHandler implements Runnable {
         return;
       }
 
-      // Pull the path out of the URI and find the matching path in the root
-      // directory of the server.
-      String path = uri.getPath();
-      LOG.debug("Path requested: {}", path);
-      if (path.length() > 0 && path.charAt(0) == '/') {
-        path = path.substring(1);
-      }
-      Path resourcePath = serverProps.getRoot().resolve(path);
-      LOG.debug("Resolved path: {}", resourcePath);
+      // Loop handling requests until there is no longer a local redirect.
+      File resourceFile;
+      while (true) {
 
-      // If the resource is in a secure directory, require authentication.
-      // Do this before checking if the resource exists so as not to leak info.
-      boolean isSecure = false;
-      for (Path secureDir : serverProps.getSecureDirs()) {
-        if (Path.of(path).startsWith(secureDir)) {
-          isSecure = true;
-          if (peerCertificate == null) {
-            statusCode = StatusCodes.CLIENT_CERTIFICATE_REQUIRED;
-            writeResponseHeader(out, statusCode, "Authentication required");
-            return;
-          }
-          break;
+        // Pull the path out of the URI and find the matching path in the root
+        // directory of the server.
+        String path = uri.getPath();
+        LOG.debug("Path requested: {}", path);
+        if (path.length() > 0 && path.charAt(0) == '/') {
+          path = path.substring(1);
         }
-      }
+        Path resourcePath = serverProps.getRoot().resolve(path);
+        LOG.debug("Resolved path: {}", resourcePath);
 
-      // If the resource is in a secure directory, validate the peer
-      // certificate.
-      if (isSecure) {
-        try {
-          peerCertificate.checkValidity();
-        } catch (CertificateExpiredException e) {
-          statusCode = StatusCodes.CERTIFICATE_NOT_VALID;
-          writeResponseHeader(out, statusCode, "Certificate has expired");
-          return;
-        } catch (CertificateNotYetValidException e) {
-          statusCode = StatusCodes.CERTIFICATE_NOT_VALID;
-          writeResponseHeader(out, statusCode, "Certificate is not yet valid");
-          return;
-        }
-      }
-
-      File resourceFile = resourcePath.toFile();
-      if (!resourceFile.exists()) {
-        // If the path does not exist, fail with a NOT_FOUND.
-        statusCode = StatusCodes.NOT_FOUND;
-        writeResponseHeader(out, statusCode, "Resource not found");
-        return;
-      }
-
-      // Determine if the resource is a CGI script.
-      boolean isCgi = serverProps.getCgiDir() != null &&
-        Path.of(path).startsWith(serverProps.getCgiDir());
-      LOG.debug("CGI? {}", isCgi);
-
-      // Handle a CGI script invocation.
-      if (isCgi) {
-        // Accessing a directory isn't valid for CGI.
-        if (resourceFile.isDirectory()) {
-          statusCode = StatusCodes.BAD_REQUEST;
-          writeResponseHeader(out, statusCode, "Cannot access directory over CGI");
-          return;
-        }
-
-        // Start a process to run the CGI script.
-        ProcessBuilder pb;
-        try {
-          pb = new CgiProcessBuilderFactory()
-            .createCgiProcessBuilder(resourceFile, uri, socket, peerCertificate,
-                                     serverProps);
-        } catch (IOException e) {
-          statusCode = StatusCodes.TEMPORARY_FAILURE;
-          writeResponseHeader(out, statusCode, "Failed to resolve CGI resource path");
-          return;
-        }
-        LOG.debug("Executing CGI {}", pb.command());
-        Process p = pb.start();
-
-        // Process the script output.
-        try {
-          try (InputStream processStdout = p.getInputStream()) {
-
-            // Consume the response headers. If the script fails before it
-            // starts generating output, then expected headers will not be
-            // found and the server will return a CGI error.
-            CgiResponseMetadata responseMetadata;
-            try {
-              responseMetadata = new CgiResponseHeaderReader()
-                .consumeHeaders(processStdout);
-            } catch (IOException e) {
-              LOG.error("CGI script returned invalid response headers", e);
-              statusCode = StatusCodes.CGI_ERROR;
-              writeResponseHeader(out, statusCode,
-                                  "CGI script returned invalid response headers");
+        // If the resource is in a secure directory, require authentication.
+        // Do this before checking if the resource exists so as not to leak
+        // info.
+        boolean isSecure = false;
+        for (Path secureDir : serverProps.getSecureDirs()) {
+          if (Path.of(path).startsWith(secureDir)) {
+            isSecure = true;
+            if (peerCertificate == null) {
+              statusCode = StatusCodes.CLIENT_CERTIFICATE_REQUIRED;
+              writeResponseHeader(out, statusCode, "Authentication required");
               return;
             }
-
-            // Check if the response indicates a redirect.
-            boolean isRedirect = responseMetadata.getLocation() != null;
-
-            // Determine the response status code. If not explicitly provided,
-            // default to 30 for a redirect and 20 otherwise.
-            Integer statusCodeInt = responseMetadata.getStatusCode();
-            if (statusCodeInt == null) {
-                statusCode = isRedirect ?
-                  StatusCodes.REDIRECT_TEMPORARY : StatusCodes.SUCCESS;
-            } else {
-              statusCode = statusCodeInt.intValue();
-            }
-
-            // Determine the meta string for the response. For a redirect, this
-            // is the URI to redirect to. Otherwise, it's the content type of
-            // the response body.
-            String meta;
-            if (isRedirect) {
-              meta = responseMetadata.getLocation().toString();
-            } else {
-              meta = responseMetadata.getContentType();
-            }
-
-            // Write out a response header.
-            writeResponseHeader(out, statusCode, meta);
-
-            // Pipe the body content out when the response is not a redirect.
-            if (!isRedirect) {
-              responseBodySize = processStdout.transferTo(out);
-            }
-          }
-        } finally {
-          // Wait for the script process to exit. If the script fails while it
-          // is generating output, transfer of the response body just stops.
-          try {
-            int exitCode = p.waitFor();
-            if (exitCode != 0) {
-              LOG.warn("CGI exited with code {}", exitCode);
-            }
-          } catch (InterruptedException e) {
-            LOG.info("Interrupted while waiting for CGI to complete");
+            break;
           }
         }
-        return;
-      }
+
+        // If the resource is in a secure directory, validate the peer
+        // certificate.
+        if (isSecure) {
+          try {
+            peerCertificate.checkValidity();
+          } catch (CertificateExpiredException e) {
+            statusCode = StatusCodes.CERTIFICATE_NOT_VALID;
+            writeResponseHeader(out, statusCode, "Certificate has expired");
+            return;
+          } catch (CertificateNotYetValidException e) {
+            statusCode = StatusCodes.CERTIFICATE_NOT_VALID;
+            writeResponseHeader(out, statusCode, "Certificate is not yet valid");
+            return;
+          }
+        }
+
+        resourceFile = resourcePath.toFile();
+        if (!resourceFile.exists()) {
+          // If the path does not exist, fail with a NOT_FOUND.
+          statusCode = StatusCodes.NOT_FOUND;
+          writeResponseHeader(out, statusCode, "Resource not found");
+          return;
+        }
+
+        // Determine if the resource is a CGI script.
+        boolean isCgi = serverProps.getCgiDir() != null &&
+          Path.of(path).startsWith(serverProps.getCgiDir());
+        LOG.debug("CGI? {}", isCgi);
+
+        // Handle a CGI script invocation.
+        if (isCgi) {
+          // Accessing a directory isn't valid for CGI.
+          if (resourceFile.isDirectory()) {
+            statusCode = StatusCodes.BAD_REQUEST;
+            writeResponseHeader(out, statusCode,
+                                "Cannot access directory over CGI");
+            return;
+          }
+
+          // Start a process to run the CGI script.
+          ProcessBuilder pb;
+          try {
+            pb = new CgiProcessBuilderFactory()
+              .createCgiProcessBuilder(resourceFile, uri, socket,
+                                       peerCertificate, serverProps);
+          } catch (IOException e) {
+            statusCode = StatusCodes.TEMPORARY_FAILURE;
+            writeResponseHeader(out, statusCode,
+                                "Failed to resolve CGI resource path");
+            return;
+          }
+          LOG.debug("Executing CGI {}", pb.command());
+          Process p = pb.start();
+
+          // Process the script output.
+          try {
+            try (InputStream processStdout = p.getInputStream()) {
+
+              // Consume the response headers. If the script fails before it
+              // starts generating output, then expected headers will not be
+              // found and the server will return a CGI error.
+              CgiResponseMetadata responseMetadata;
+              try {
+                responseMetadata = new CgiResponseHeaderReader()
+                  .consumeHeaders(processStdout);
+              } catch (IOException e) {
+                LOG.error("CGI script returned invalid response headers", e);
+                statusCode = StatusCodes.CGI_ERROR;
+                writeResponseHeader(out, statusCode,
+                                    "CGI script returned invalid response headers");
+                return;
+              }
+
+              // Check if the response indicates a redirect.
+              boolean isRedirect = responseMetadata.getLocation() != null;
+
+              // If the location URI is non-absolute (not starting with a
+              // scheme), then treat it as a local redirect.
+              if (isRedirect && !responseMetadata.getLocation().isAbsolute()) {
+                LOG.debug("Local redirect: {}", responseMetadata.getLocation());
+                uri = responseMetadata.getLocation();
+                continue; // the while loop for local redirects
+              }
+
+              // Determine the response status code. If not explicitly provided,
+              // default to 30 for a redirect and 20 otherwise.
+              Integer statusCodeInt = responseMetadata.getStatusCode();
+              if (statusCodeInt == null) {
+                  statusCode = isRedirect ?
+                    StatusCodes.REDIRECT_TEMPORARY : StatusCodes.SUCCESS;
+              } else {
+                statusCode = statusCodeInt.intValue();
+              }
+
+              // Determine the meta string for the response. For a redirect,
+              // this is the URI to redirect to. Otherwise, it's the content
+              // type of the response body.
+              String meta;
+              if (isRedirect) {
+                meta = responseMetadata.getLocation().toString();
+              } else {
+                meta = responseMetadata.getContentType();
+              }
+
+              // Write out a response header.
+              writeResponseHeader(out, statusCode, meta);
+
+              // Pipe the body content out when the response is not a redirect.
+              if (!isRedirect) {
+                responseBodySize = processStdout.transferTo(out);
+              }
+            }
+          } finally {
+            // Wait for the script process to exit. If the script fails while it
+            // is generating output, transfer of the response body just stops.
+            try {
+              int exitCode = p.waitFor();
+              if (exitCode != 0) {
+                LOG.warn("CGI exited with code {}", exitCode);
+              }
+            } catch (InterruptedException e) {
+              LOG.info("Interrupted while waiting for CGI to complete");
+            }
+          }
+          return;
+        } // end if isCgi
+
+        // Non-CGI resources cannot be redirects.
+        break;
+
+      } // end while redirecting
 
       // At this point, the resource is treated as static.
       if (resourceFile.isDirectory()) {
