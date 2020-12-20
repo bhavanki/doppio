@@ -37,6 +37,10 @@ public class ServerProperties {
   private static final Path DEFAULT_CGI_DIR = null;
   private static final Path DEFAULT_LOG_DIR = null;
   private static final List<Path> DEFAULT_SECURE_DIRS = List.of();
+  private static final Path DEFAULT_KEYSTORE = Path.of("/etc/doppio/keystore.jks");
+  private static final String DEFAULT_KEYSTORE_PASSWORD = "doppio";
+  private static final Path DEFAULT_TRUSTSTORE = Path.of("/etc/doppio/truststore.jks");
+  private static final String DEFAULT_TRUSTSTORE_PASSWORD = "doppio";
 
   private final Path root;
   private final String host;
@@ -45,6 +49,10 @@ public class ServerProperties {
   private final Path cgiDir;
   private final Path logDir;
   private final List<Path> secureDirs;
+  private final Path keystore;
+  private final String keystorePassword;
+  private final Path truststore;
+  private final String truststorePassword;
 
   /**
    * Creates a new set of server properties from Java properties.
@@ -59,6 +67,12 @@ public class ServerProperties {
     cgiDir = getPathProperty(props, "cgiDir", DEFAULT_CGI_DIR);
     logDir = getPathProperty(props, "logDir", DEFAULT_LOG_DIR);
     secureDirs = getPathsProperty(props, "secureDirs", DEFAULT_SECURE_DIRS);
+    keystore = getPathProperty(props, "keystore", DEFAULT_KEYSTORE);
+    keystorePassword = props.getProperty("keystorePassword",
+                                         DEFAULT_KEYSTORE_PASSWORD);
+    truststore = getPathProperty(props, "truststore", DEFAULT_TRUSTSTORE);
+    truststorePassword = props.getProperty("truststorePassword",
+                                         DEFAULT_TRUSTSTORE_PASSWORD);
   }
 
   private final Path getPathProperty(Properties props, String key,
@@ -149,5 +163,41 @@ public class ServerProperties {
    */
   public List<Path> getSecureDirs() {
     return secureDirs;
+  }
+
+  /**
+   * Gets the keystore containing the server's private key.
+   *
+   * @return keystore
+   */
+  public Path getKeystore() {
+    return keystore;
+  }
+
+  /**
+   * Gets the password for the keystore.
+   *
+   * @return keystore password
+   */
+  public String getKeystorePassword() {
+    return keystorePassword;
+  }
+
+  /**
+   * Gets the truststore containing trusted certificates.
+   *
+   * @return truststore
+   */
+  public Path getTruststore() {
+    return truststore;
+  }
+
+  /**
+   * Gets the password for the truststore.
+   *
+   * @return truststore password
+   */
+  public String getTruststorePassword() {
+    return truststorePassword;
   }
 }

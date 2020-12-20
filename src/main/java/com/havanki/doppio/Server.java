@@ -22,10 +22,12 @@ package com.havanki.doppio;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.SocketException;
+import java.security.KeyStore;
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SNIHostName;
 import javax.net.ssl.SNIMatcher;
 import javax.net.ssl.SSLContext;
@@ -33,6 +35,7 @@ import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,15 +71,16 @@ public class Server {
    * @throws Exception
    */
   public void start() throws Exception {
-    serverSocket = SSLServerSocketFactory.getDefault()
+    SSLContext sslContext = buildSSLContext();
+    serverSocket = sslContext.getServerSocketFactory()
       .createServerSocket(serverProps.getPort());
+
     accessLogger = new AccessLogger(serverProps.getLogDir());
 
     // Set some custom SSL parameters:
     // - require TLS 1.3 or 1.2
     // - require SNI with an exact match for the server's host
-    SSLParameters sslParameters =
-        SSLContext.getDefault().getDefaultSSLParameters();
+    SSLParameters sslParameters = sslContext.getDefaultSSLParameters();
     sslParameters.setProtocols(new String[] { "TLSv1.3", "TLSv1.2" });
     String hostRegex = serverProps.getHost().replace(".", "\\.");
     SNIMatcher sniMatcher = SNIHostName.createSNIMatcher(hostRegex);
@@ -104,6 +108,27 @@ public class Server {
         LOG.warn("Failed to close access log", e);
       }
     }
+  }
+
+  private SSLContext buildSSLContext() throws Exception {
+    SSLContext sslContext = SSLContext.getInstance("TLS");
+
+    KeyStore keystore =
+        KeyStore.getInstance(serverProps.getKeystore().toFile(),
+                             serverProps.getKeystorePassword().toCharArray());
+    KeyManagerFactory kmf =
+        KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+    kmf.init(keystore, serverProps.getKeystorePassword().toCharArray());
+
+    KeyStore truststore =
+        KeyStore.getInstance(serverProps.getTruststore().toFile(),
+                             serverProps.getTruststorePassword().toCharArray());
+    TrustManagerFactory tmf =
+        TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+    tmf.init(truststore);
+
+    sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+    return sslContext;
   }
 
   /**

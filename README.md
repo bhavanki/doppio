@@ -22,13 +22,16 @@ $ keytool -genkeypair -keystore doppio.jks -storepass doppio -keyalg EC
 
 Use a common name that matches your hostname.
 
-Then, create a properties file. Use [doppio-example.properties](doppio-example.properties) as an example. Only the host name is required; it must match the name on the server certificate.
+Then, create a properties file. Use [doppio-example.properties](doppio-example.properties) as an example. Set the following properties:
+
+* `host` must match the name on the server certificate.
+* `keystore` must point to the server private key file.
+* `keystorePassword` must contain the password for the keystore.
 
 Finally, run the JAR.
 
 ```
-$ java -Djavax.net.ssl.keyStore=doppio.jks -Djavax.net.ssl.keyStorePassword=doppio \
-  -jar target/doppio-*.jar doppio.properties
+$ java -jar target/doppio-*.jar doppio.properties
 ```
 
 To support TLS client authentication, create a truststore containing imported, trusted certificates of the authorities that sign client certificates (or the client certificates themselves).
@@ -38,11 +41,7 @@ $ keytool -importcert -file trustedcert.pem -alias trustedcert \
   -keystore doppiots.jks
 ```
 
-Then, specify the truststore as well when running the JAR.
-
-```
-... -Djavax.net.ssl.trustStore=doppiots.jks -Djavax.net.ssl.trustStorePassword=doppio ...
-```
+Then, specify the truststore in the server properties file, and its password, using the `truststore` and `truststorePassword` properties, respectively.
 
 ## Static File Support
 
