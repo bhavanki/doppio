@@ -112,9 +112,11 @@ public class RequestHandler implements Runnable {
         return;
       }
 
-      // Loop handling requests until there is no longer a local redirect.
-      File resourceFile;
-      while (true) {
+      // Loop handling requests until there is no longer a local redirect, or
+      // the maximum number of local redirects has been exceeded.
+      File resourceFile = null;
+      int numLocalRedirects = 0;
+      while (numLocalRedirects <= serverProps.getMaxLocalRedirects()) {
 
         // Pull the path out of the URI and find the matching path in the root
         // directory of the server.
@@ -223,6 +225,7 @@ public class RequestHandler implements Runnable {
               if (isRedirect && !responseMetadata.getLocation().isAbsolute()) {
                 LOG.debug("Local redirect: {}", responseMetadata.getLocation());
                 uri = responseMetadata.getLocation();
+                numLocalRedirects++;
                 continue; // the while loop for local redirects
               }
 
@@ -273,6 +276,23 @@ public class RequestHandler implements Runnable {
         break;
 
       } // end while redirecting
+
+      // If the number of local redirects has been exceeded, fail now.
+      if (numLocalRedirects > serverProps.getMaxLocalRedirects()) {
+        statusCode = StatusCodes.CGI_ERROR;
+        writeResponseHeader(out, statusCode,
+                            "Exceeded maximum number of local redirects");
+        return;
+      }
+
+      // This should not happen, since maxLocalRedirects cannot be negative.
+      if (resourceFile == null) {
+        statusCode = StatusCodes.PERMANENT_FAILURE;
+        writeResponseHeader(out, statusCode,
+                            "Internal error, check the server log");
+        LOG.error("resourceFile is null after local redirect loop");
+        return;
+      }
 
       // At this point, the resource is treated as static.
       if (resourceFile.isDirectory()) {

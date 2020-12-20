@@ -35,6 +35,7 @@ public class ServerProperties {
   private static final int DEFAULT_PORT = 1965;
   private static final int DEFAULT_NUM_THREADS = 4;
   private static final Path DEFAULT_CGI_DIR = null;
+  private static final int DEFAULT_MAX_LOCAL_REDIRECTS = 10;
   private static final Path DEFAULT_LOG_DIR = null;
   private static final List<Path> DEFAULT_SECURE_DIRS = List.of();
   private static final Path DEFAULT_KEYSTORE = Path.of("/etc/doppio/keystore.jks");
@@ -47,6 +48,7 @@ public class ServerProperties {
   private final int port;
   private final int numThreads;
   private final Path cgiDir;
+  private final int maxLocalRedirects;
   private final Path logDir;
   private final List<Path> secureDirs;
   private final Path keystore;
@@ -65,6 +67,8 @@ public class ServerProperties {
     port = getIntProperty(props, "port", DEFAULT_PORT);
     numThreads = getIntProperty(props, "numThreads", DEFAULT_NUM_THREADS);
     cgiDir = getPathProperty(props, "cgiDir", DEFAULT_CGI_DIR);
+    maxLocalRedirects = getIntProperty(props, "maxLocalRedirects",
+                                       DEFAULT_MAX_LOCAL_REDIRECTS);
     logDir = getPathProperty(props, "logDir", DEFAULT_LOG_DIR);
     secureDirs = getPathsProperty(props, "secureDirs", DEFAULT_SECURE_DIRS);
     keystore = getPathProperty(props, "keystore", DEFAULT_KEYSTORE);
@@ -73,6 +77,16 @@ public class ServerProperties {
     truststore = getPathProperty(props, "truststore", DEFAULT_TRUSTSTORE);
     truststorePassword = props.getProperty("truststorePassword",
                                          DEFAULT_TRUSTSTORE_PASSWORD);
+
+    if (port < 1 || port > 65535) {
+      throw new IllegalStateException("port must be between 1 and 65535");
+    }
+    if (numThreads < 1) {
+      throw new IllegalStateException("numThreads must be positive");
+    }
+    if (maxLocalRedirects < 0) {
+      throw new IllegalStateException("maxLocalRedirects must be non-negative");
+    }
   }
 
   private final Path getPathProperty(Properties props, String key,
@@ -136,6 +150,15 @@ public class ServerProperties {
    */
   public int getNumThreads() {
     return numThreads;
+  }
+
+  /**
+   * Gets the maximum number of CGI local redirects permitted by the server.
+   *
+   * @return maximum number of CGI local redirects
+   */
+  public int getMaxLocalRedirects() {
+    return maxLocalRedirects;
   }
 
   /**
