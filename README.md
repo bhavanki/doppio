@@ -1,5 +1,7 @@
 # Doppio
 
+<img src="src/main/resources/doppio.png" alt="Doppio logo" width="200px">
+
 A [Gemini](https://gemini.circumlunar.space/) server.
 
 ## Building
