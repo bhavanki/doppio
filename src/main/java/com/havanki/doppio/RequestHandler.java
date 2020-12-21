@@ -49,6 +49,7 @@ public class RequestHandler implements Runnable {
 
   private static final Logger LOG = LoggerFactory.getLogger(RequestHandler.class);
 
+  private static final int MAX_REQUEST_BYTES = 1026; // 1024 + CRLF
   private static final String CRLF = "\r\n";
 
   private final ContentTypeResolver contentTypeResolver =
@@ -92,9 +93,10 @@ public class RequestHandler implements Runnable {
     }
 
     // Open input and output streams for the socket.
-    try (InputStreamReader isr =
-            new InputStreamReader(socket.getInputStream(),
-                                  StandardCharsets.UTF_8);
+    try (BoundedInputStream bis =
+          new BoundedInputStream(socket.getInputStream(), MAX_REQUEST_BYTES);
+         InputStreamReader isr =
+          new InputStreamReader(bis, StandardCharsets.UTF_8);
          BufferedReader in = new BufferedReader(isr);
          OutputStream os = socket.getOutputStream();
          BufferedOutputStream out = new BufferedOutputStream(os)) {
