@@ -34,6 +34,7 @@ import java.net.URISyntaxException;
 import java.security.cert.CertificateExpiredException;
 import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.X509Certificate;
+import java.util.Optional;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSocket;
@@ -162,18 +163,22 @@ public class RequestHandler implements Runnable {
           }
         }
 
-        resourceFile = resourcePath.toFile();
-        if (!resourceFile.exists()) {
-          // If the path does not exist, fail with a NOT_FOUND.
-          statusCode = StatusCodes.NOT_FOUND;
-          writeResponseHeader(out, statusCode, "Resource not found");
-          return;
-        }
-
         // Determine if the resource is a CGI script.
         boolean isCgi = serverProps.getCgiDir() != null &&
           Path.of(path).startsWith(serverProps.getCgiDir());
         LOG.debug("CGI? {}", isCgi);
+
+        // Locate the resource, finding the path to it and any extra path
+        // information.
+        Optional<Path[]> splitResourcePath =
+          splitResourcePath(resourcePath, isCgi);
+        if (splitResourcePath.isEmpty()) {
+          // If the resource does not exist, fail with a NOT_FOUND.
+          statusCode = StatusCodes.NOT_FOUND;
+          writeResponseHeader(out, statusCode, "Resource not found");
+          return;
+        }
+        resourceFile = splitResourcePath.get()[0].toFile();
 
         // Handle a CGI script invocation.
         if (isCgi) {
@@ -189,8 +194,8 @@ public class RequestHandler implements Runnable {
           ProcessBuilder pb;
           try {
             pb = new CgiProcessBuilderFactory()
-              .createCgiProcessBuilder(resourceFile, uri, socket,
-                                       peerCertificate, serverProps);
+              .createCgiProcessBuilder(resourceFile, splitResourcePath.get(),
+                                       uri, socket, peerCertificate, serverProps);
           } catch (IOException e) {
             statusCode = StatusCodes.TEMPORARY_FAILURE;
             writeResponseHeader(out, statusCode,
@@ -346,6 +351,38 @@ public class RequestHandler implements Runnable {
       }
       accessLogger.log(socket, request, statusCode, responseBodySize);
     }
+  }
+
+  private Optional<Path[]> splitResourcePath(final Path resourcePath, boolean isCgi) {
+    if (!isCgi) {
+      // The whole path is the resource, if it's present.
+      if (resourcePath.toFile().exists()) {
+        return Optional.of(new Path[] { resourcePath, null });
+      }
+      return Optional.empty();
+    }
+
+    // Find the portion of the path that points to something in the CGI
+    // directory. Everything after that is extra path information to pass to
+    // the script.
+    Path cgiDir = serverProps.getRoot().resolve(serverProps.getCgiDir());
+    Path scriptPath = resourcePath; // start with the entire path
+    while (!scriptPath.equals(cgiDir)) {
+      if (scriptPath.toFile().exists()) {
+        // Note that this doesn't care if the path is actually a directory.
+        // That case is rejected later anyway.
+        return Optional.of(new Path[] {
+          scriptPath,
+          scriptPath.relativize(resourcePath)
+        });
+      }
+      scriptPath = scriptPath.getParent(); // try one directory up
+    }
+
+    // Nothing in the CGI directory matched. Note that this could also mean
+    // that the CGI directory itself should be the "script" path, and
+    // everything else is extra path information, but that isn't valid anyway.
+    return Optional.empty();
   }
 
   private static final String RESPONSE_HEADER_FORMAT = "%d %s" + CRLF;

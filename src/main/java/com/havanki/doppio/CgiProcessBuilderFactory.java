@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URI;
+import java.nio.file.Path;
 import java.security.cert.X509Certificate;
 import java.util.Map;
 
@@ -42,6 +43,7 @@ public class CgiProcessBuilderFactory {
    * expected environment variables.
    *
    * @param  resourceFile script file
+   * @param  splitPaths   full path to script and extra path information
    * @param  uri          original request URI
    * @param  socket       client socket
    * @param  peerCert     principal identifying peer, if any
@@ -50,8 +52,8 @@ public class CgiProcessBuilderFactory {
    * @throws IOException  if the canonical path for the script file cannot be
    *                      determined
    */
-  public ProcessBuilder createCgiProcessBuilder(File resourceFile, URI uri,
-                                                Socket socket, X509Certificate peerCert,
+  public ProcessBuilder createCgiProcessBuilder(File resourceFile, Path[] splitPaths,
+                                                URI uri, Socket socket, X509Certificate peerCert,
                                                 ServerProperties serverProps)
     throws IOException {
     // Run the resource file as the command. Combine standard output and
@@ -65,7 +67,10 @@ public class CgiProcessBuilderFactory {
     // Set CGI environment variables.
     Map<String, String> pbenv = pb.environment();
     pbenv.put("GATEWAY_INTERFACE", GATEWAY_INTERFACE);
-    // pbenv.put("PATH_INFO", ...); TBD
+    String extraPathInfo = splitPaths[1].toString();
+    if (!extraPathInfo.isEmpty()) {
+      pbenv.put("PATH_INFO", "/" + extraPathInfo);
+    }
     // pbenv.put("PATH_TRANSLATED", ...); TBD
     if (uri.getQuery() != null) {
       pbenv.put("QUERY_STRING", uri.getQuery());
@@ -87,7 +92,7 @@ public class CgiProcessBuilderFactory {
     }
 
     // REQUEST_METHOD is not applicable to Gemini
-    pbenv.put("SCRIPT_NAME", uri.getPath()); // TBD: adjust with PATH_INFO
+    pbenv.put("SCRIPT_NAME", "/" + serverProps.getRoot().relativize(splitPaths[0]).toString());
     pbenv.put("SERVER_NAME", serverProps.getHost());
     pbenv.put("SERVER_PORT", Integer.toString(serverProps.getPort()));
     pbenv.put("SERVER_PROTOCOL", SERVER_PROTOCOL);
