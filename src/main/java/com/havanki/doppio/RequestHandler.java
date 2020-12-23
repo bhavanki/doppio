@@ -121,10 +121,18 @@ public class RequestHandler implements Runnable {
       int numLocalRedirects = 0;
       while (numLocalRedirects <= serverProps.getMaxLocalRedirects()) {
 
+        // Normalize the URI to avoid any .. shenanigans.
+        uri = uri.normalize();
+
         // Pull the path out of the URI and find the matching path in the root
         // directory of the server.
         String path = uri.getPath();
         LOG.debug("Path requested: {}", path);
+        if (path.startsWith("/..") || path.startsWith("..")) {
+          statusCode = StatusCodes.BAD_REQUEST;
+          writeResponseHeader(out, statusCode, "Illegal path in URI");
+          return;
+        }
         if (path.length() > 0 && path.charAt(0) == '/') {
           path = path.substring(1);
         }
