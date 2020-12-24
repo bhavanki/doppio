@@ -63,8 +63,13 @@ public class RequestParser {
                                        StatusCodes.BAD_REQUEST);
     }
 
-    // Validate that the URI uses a valid scheme and is for this host.
-    if (!hasValidScheme(uri)) {
+    // Validate that the URI has the "gemini" scheme.
+    String scheme = uri.getScheme();
+    if (scheme == null) {
+      throw new RequestParserException("The gemini scheme is required",
+                                       StatusCodes.BAD_REQUEST);
+    }
+    if (!hasValidScheme(scheme)) {
       throw new RequestParserException("Only the gemini scheme is supported",
                                        StatusCodes.PROXY_REQUEST_REFUSED);
     }
@@ -78,12 +83,8 @@ public class RequestParser {
     return uri;
   }
 
-  private boolean hasValidScheme(URI uri) {
-    String scheme = uri.getScheme();
-    if (uri == null) {
-      return true;
-    }
-    return (GEMINI_SCHEME.equals(scheme));
+  private boolean hasValidScheme(String scheme) {
+    return GEMINI_SCHEME.equals(scheme);
   }
 
   private boolean hasMatchingHost(URI uri) {
