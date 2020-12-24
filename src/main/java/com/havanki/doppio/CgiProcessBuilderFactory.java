@@ -67,11 +67,12 @@ public class CgiProcessBuilderFactory {
     // Set CGI environment variables.
     Map<String, String> pbenv = pb.environment();
     pbenv.put("GATEWAY_INTERFACE", GATEWAY_INTERFACE);
-    String extraPathInfo = splitPaths[1].toString();
-    if (!extraPathInfo.isEmpty()) {
-      pbenv.put("PATH_INFO", "/" + extraPathInfo);
+    String extraPath = splitPaths[1].toString();
+    if (!extraPath.isEmpty()) {
+      pbenv.put("PATH_INFO", "/" + extraPath);
+      pbenv.put("PATH_TRANSLATED",
+                serverProps.getRoot().resolve(extraPath).toString());
     }
-    // pbenv.put("PATH_TRANSLATED", ...); TBD
     if (uri.getQuery() != null) {
       pbenv.put("QUERY_STRING", uri.getQuery());
     }
