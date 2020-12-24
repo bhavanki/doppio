@@ -30,7 +30,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.security.cert.CertificateExpiredException;
 import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.X509Certificate;
@@ -188,107 +187,108 @@ public class RequestHandler implements Runnable {
         }
         resourceFile = splitResourcePath.get()[0].toFile();
 
-        // Handle a CGI script invocation.
-        if (isCgi) {
-          // Accessing a directory isn't valid for CGI.
-          if (resourceFile.isDirectory()) {
-            statusCode = StatusCodes.BAD_REQUEST;
-            writeResponseHeader(out, statusCode,
-                                "Cannot access directory over CGI");
-            return;
-          }
+        // Non-CGI resources cannot be redirects, so break out of the redirect
+        // loop now for them.
+        if (!isCgi) {
+          break;
+        }
 
-          // Start a process to run the CGI script.
-          ProcessBuilder pb;
-          try {
-            pb = new CgiProcessBuilderFactory()
-              .createCgiProcessBuilder(resourceFile, splitResourcePath.get(),
-                                       uri, socket, peerCertificate, serverProps);
-          } catch (IOException e) {
-            statusCode = StatusCodes.TEMPORARY_FAILURE;
-            writeResponseHeader(out, statusCode,
-                                "Failed to resolve CGI resource path");
-            return;
-          }
-          LOG.debug("Executing CGI {}", pb.command());
-          Process p = pb.start();
-
-          // Process the script output.
-          try {
-            try (InputStream processStdout = p.getInputStream()) {
-
-              // Consume the response headers. If the script fails before it
-              // starts generating output, then expected headers will not be
-              // found and the server will return a CGI error.
-              CgiResponseMetadata responseMetadata;
-              try {
-                responseMetadata = new CgiResponseHeaderReader()
-                  .consumeHeaders(processStdout);
-              } catch (IOException e) {
-                LOG.error("CGI script returned invalid response headers", e);
-                statusCode = StatusCodes.CGI_ERROR;
-                writeResponseHeader(out, statusCode,
-                                    "CGI script returned invalid response headers");
-                return;
-              }
-
-              // Check if the response indicates a redirect.
-              boolean isRedirect = responseMetadata.getLocation() != null;
-
-              // If the location URI is non-absolute (not starting with a
-              // scheme), then treat it as a local redirect.
-              if (isRedirect && !responseMetadata.getLocation().isAbsolute()) {
-                LOG.debug("Local redirect: {}", responseMetadata.getLocation());
-                uri = responseMetadata.getLocation();
-                numLocalRedirects++;
-                continue; // the while loop for local redirects
-              }
-
-              // Determine the response status code. If not explicitly provided,
-              // default to 30 for a redirect and 20 otherwise.
-              Integer statusCodeInt = responseMetadata.getStatusCode();
-              if (statusCodeInt == null) {
-                  statusCode = isRedirect ?
-                    StatusCodes.REDIRECT_TEMPORARY : StatusCodes.SUCCESS;
-              } else {
-                statusCode = statusCodeInt.intValue();
-              }
-
-              // Determine the meta string for the response. For a redirect,
-              // this is the URI to redirect to. Otherwise, it's the content
-              // type of the response body.
-              String meta;
-              if (isRedirect) {
-                meta = responseMetadata.getLocation().toString();
-              } else {
-                meta = responseMetadata.getContentType();
-              }
-
-              // Write out a response header.
-              writeResponseHeader(out, statusCode, meta);
-
-              // Pipe the body content out when the response is not a redirect.
-              if (!isRedirect) {
-                responseBodySize = processStdout.transferTo(out);
-              }
-            }
-          } finally {
-            // Wait for the script process to exit. If the script fails while it
-            // is generating output, transfer of the response body just stops.
-            try {
-              int exitCode = p.waitFor();
-              if (exitCode != 0) {
-                LOG.warn("CGI exited with code {}", exitCode);
-              }
-            } catch (InterruptedException e) {
-              LOG.info("Interrupted while waiting for CGI to complete");
-            }
-          }
+        // Accessing a directory isn't valid for CGI.
+        if (resourceFile.isDirectory()) {
+          statusCode = StatusCodes.BAD_REQUEST;
+          writeResponseHeader(out, statusCode,
+                              "Cannot access directory over CGI");
           return;
-        } // end if isCgi
+        }
 
-        // Non-CGI resources cannot be redirects.
-        break;
+        // Start a process to run the CGI script.
+        ProcessBuilder pb;
+        try {
+          pb = new CgiProcessBuilderFactory()
+            .createCgiProcessBuilder(resourceFile, splitResourcePath.get(),
+                                     uri, socket, peerCertificate, serverProps);
+        } catch (IOException e) {
+          statusCode = StatusCodes.TEMPORARY_FAILURE;
+          writeResponseHeader(out, statusCode,
+                              "Failed to resolve CGI resource path");
+          return;
+        }
+        LOG.debug("Executing CGI {}", pb.command());
+        Process p = pb.start();
+
+        // Process the script output.
+        try {
+          try (InputStream processStdout = p.getInputStream()) {
+
+            // Consume the response headers. If the script fails before it
+            // starts generating output, then expected headers will not be
+            // found and the server will return a CGI error.
+            CgiResponseMetadata responseMetadata;
+            try {
+              responseMetadata = new CgiResponseHeaderReader()
+                .consumeHeaders(processStdout);
+            } catch (IOException e) {
+              LOG.error("CGI script returned invalid response headers", e);
+              statusCode = StatusCodes.CGI_ERROR;
+              writeResponseHeader(out, statusCode,
+                                  "CGI script returned invalid response headers");
+              return;
+            }
+
+            // Check if the response indicates a redirect.
+            boolean isRedirect = responseMetadata.getLocation() != null;
+
+            // If the location URI is non-absolute (not starting with a
+            // scheme), then treat it as a local redirect.
+            if (isRedirect && !responseMetadata.getLocation().isAbsolute()) {
+              LOG.debug("Local redirect: {}", responseMetadata.getLocation());
+              uri = responseMetadata.getLocation();
+              numLocalRedirects++;
+              continue; // the while loop for local redirects
+            }
+
+            // Determine the response status code. If not explicitly provided,
+            // default to 30 for a redirect and 20 otherwise.
+            Integer statusCodeInt = responseMetadata.getStatusCode();
+            if (statusCodeInt == null) {
+                statusCode = isRedirect ?
+                  StatusCodes.REDIRECT_TEMPORARY : StatusCodes.SUCCESS;
+            } else {
+              statusCode = statusCodeInt.intValue();
+            }
+
+            // Determine the meta string for the response. For a redirect,
+            // this is the URI to redirect to. Otherwise, it's the content
+            // type of the response body.
+            String meta;
+            if (isRedirect) {
+              meta = responseMetadata.getLocation().toString();
+            } else {
+              meta = responseMetadata.getContentType();
+            }
+
+            // Write out a response header.
+            writeResponseHeader(out, statusCode, meta);
+
+            // Pipe the body content out when the response is not a redirect.
+            if (!isRedirect) {
+              responseBodySize = processStdout.transferTo(out);
+            }
+          }
+        } finally {
+          // Wait for the script process to exit. If the script fails while it
+          // is generating output, transfer of the response body just stops.
+          try {
+            int exitCode = p.waitFor();
+            if (exitCode != 0) {
+              LOG.warn("CGI exited with code {}", exitCode);
+            }
+          } catch (InterruptedException e) {
+            LOG.info("Interrupted while waiting for CGI to complete");
+          }
+        } // end processing CGI output
+
+        return; // NOPMD
 
       } // end while redirecting
 

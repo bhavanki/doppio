@@ -89,16 +89,15 @@ public class ServerProperties {
     }
   }
 
-  private final Path getPathProperty(Properties props, String key,
-                                     Path defaultValue) {
+  private Path getPathProperty(Properties props, String key, Path defaultValue) {
     if (!props.containsKey(key)) {
       return defaultValue;
     }
     return FileSystems.getDefault().getPath(props.getProperty(key));
   }
 
-  private final List<Path> getPathsProperty(Properties props, String key,
-                                            List<Path> defaultValue) {
+  private List<Path> getPathsProperty(Properties props, String key,
+                                      List<Path> defaultValue) {
     if (!props.containsKey(key)) {
       return defaultValue;
     }
@@ -108,8 +107,7 @@ public class ServerProperties {
         .collect(Collectors.toList());
   }
 
-  private final int getIntProperty(Properties props, String key,
-                                   int defaultValue) {
+  private int getIntProperty(Properties props, String key, int defaultValue) {
     if (!props.containsKey(key)) {
       return defaultValue;
     }

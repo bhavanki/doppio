@@ -84,7 +84,7 @@ public class BoundedInputStream extends FilterInputStream {
     }
 
     long numBytesToSkip = Math.min((long) numBytesRemaining, n);
-    long numBytesSkipped = super.skip(n);
+    long numBytesSkipped = super.skip(numBytesToSkip);
     if (numBytesSkipped > 0L) {
       byteCount += (int) numBytesSkipped;
     }
