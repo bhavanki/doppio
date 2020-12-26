@@ -94,6 +94,14 @@
               <mainClass>com.havanki.doppio.Main</mainClass>
             </transformer>
           </transformers>
+          <filters>
+            <filter>
+              <artifact>*:*</artifact>
+              <excludes>
+                <exclude>META-INF/MANIFEST.MF</exclude>
+              </excludes>
+            </filter>
+          </filters>
           <relocations>
             <relocation>
               <pattern>org.slf4j</pattern>
