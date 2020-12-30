@@ -30,34 +30,74 @@ public class CgiResponseMetadata {
   private String reasonPhrase;
   private URI location;
 
+  /**
+   * Sets the content type.
+   *
+   * @param contentType content type
+   */
   public void setContentType(String contentType) {
     this.contentType = contentType;
   }
 
+  /**
+   * Gets the content type.
+   *
+   * @return content type
+   */
   public String getContentType() {
     return contentType;
   }
 
+  /**
+   * Sets the status code.
+   *
+   * @param statusCode status code
+   */
   public void setStatusCode(Integer statusCode) {
     this.statusCode = statusCode;
   }
 
+  /**
+   * Gets the status code.
+   *
+   * @return status code
+   */
   public Integer getStatusCode() {
     return statusCode;
   }
 
+  /**
+   * Sets the reason phrase.
+   *
+   * @param reasonPhrase reason phrase
+   */
   public void setReasonPhrase(String reasonPhrase) {
     this.reasonPhrase = reasonPhrase;
   }
 
+  /**
+   * Gets the reason phrase.
+   *
+   * @return reason phrase
+   */
   public String getReasonPhrase() {
     return reasonPhrase;
   }
 
+  /**
+   * Sets the location.
+   *
+   * @param location location
+   */
   public void setLocation(URI location) {
     this.location = location;
   }
 
+  /**
+   * Gets the location.
+   *
+   * @return location
+   */
   public URI getLocation() {
     return location;
   }

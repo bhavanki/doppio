@@ -23,8 +23,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+/**
+ * A holder for the application version number.
+ */
 public class Version {
 
+  /**
+   * The application version number.
+   */
   public static final String VERSION;
 
   static {

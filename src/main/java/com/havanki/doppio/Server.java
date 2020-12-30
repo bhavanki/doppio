@@ -67,7 +67,7 @@ public class Server {
    * Starts the server in the calling thread. This method exits when the server
    * is shutting down.
    *
-   * @throws Exception
+   * @throws Exception if the server fails to start
    */
   public void start() throws Exception {
     SSLContext sslContext = buildSSLContext();

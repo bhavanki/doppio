@@ -31,6 +31,14 @@ public class BoundedInputStream extends FilterInputStream {
   private final int maxBytes;
   private int byteCount;
 
+  /**
+   * Creates a new input stream that reads from the specified underlying input
+   * stream.
+   *
+   * @param  in       underlying input stream
+   * @param  maxBytes maximum number of bytes that may be read
+   * @throws IllegalArgumentException if maxBytes is negative
+   */
   public BoundedInputStream(InputStream in, int maxBytes) {
     super(in);
 

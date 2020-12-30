@@ -28,6 +28,13 @@ import java.util.Properties;
  */
 public class Main {
 
+  /**
+   * Entry point for the server.
+   *
+   * @param  args      command-line arguments: path to server properties file
+   * @throws Exception if the server properties file could not be read, or if
+   *                   the server fails to start
+   */
   public static void main(String[] args) throws Exception {
     Properties props = new Properties();
     try (FileReader r = new FileReader(args[0])) {

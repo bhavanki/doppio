@@ -96,6 +96,9 @@ public class RequestParser {
    */
   public static class RequestParserException extends Exception {
 
+    /**
+     * The response status code.
+     */
     private final int statusCode;
 
     private RequestParserException(String msg, int statusCode) {
