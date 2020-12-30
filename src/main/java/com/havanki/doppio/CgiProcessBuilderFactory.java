@@ -22,11 +22,14 @@ package com.havanki.doppio;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.net.URI;
 import java.nio.file.Path;
 import java.security.cert.X509Certificate;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
+
+import javax.net.ssl.SSLSocket;
 
 /**
  * A factory for {@code ProcessBuilder} objects that can run CGI scripts.
@@ -37,6 +40,9 @@ public class CgiProcessBuilderFactory {
   private static final String GATEWAY_INTERFACE = "CGI/1.1";
   private static final String SERVER_PROTOCOL = "GEMINI";  // probably right
   private static final String SERVER_SOFTWARE_PREFIX = "Doppio";
+
+  private static final DateTimeFormatter TIMESTAMP_FORMATTER =
+    DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
   /**
    * Creates a {@code ProcessBuilder} for a CGI script. This includes setting
@@ -53,7 +59,7 @@ public class CgiProcessBuilderFactory {
    *                      determined
    */
   public ProcessBuilder createCgiProcessBuilder(File resourceFile, Path[] splitPaths,
-                                                URI uri, Socket socket, X509Certificate peerCert,
+                                                URI uri, SSLSocket socket, X509Certificate peerCert,
                                                 ServerProperties serverProps)
     throws IOException {
     // Run the resource file as the command. Combine standard output and
@@ -84,12 +90,23 @@ public class CgiProcessBuilderFactory {
       pbenv.put("REMOTE_HOST", remoteSocketAddress.getHostString());
     }
 
+    // Apache mod_ssl variables
+    pbenv.put("SSL_CIPHER", socket.getSession().getCipherSuite());
+    pbenv.put("SSL_PROTOCOL", socket.getSession().getProtocol());
+    pbenv.put("SSL_SESSION_ID", byteArrayToHexString(socket.getSession().getId()));
+
     if (peerCert != null) {
       pbenv.put("AUTH_TYPE", AUTH_TYPE);
       pbenv.put("REMOTE_USER", peerCert.getSubjectX500Principal().getName());
-      // Apache mod_ssl variables
+      // More Apache mod_ssl variables
       pbenv.put("SSL_CLIENT_I_DN", peerCert.getIssuerX500Principal().getName());
+      pbenv.put("SSL_CLIENT_M_SERIAL", peerCert.getSerialNumber().toString());
+      pbenv.put("SSL_CLIENT_M_VERSION", Integer.toString(peerCert.getVersion()));
       pbenv.put("SSL_CLIENT_S_DN", peerCert.getSubjectX500Principal().getName());
+      pbenv.put("SSL_CLIENT_V_START",
+                TIMESTAMP_FORMATTER.format(peerCert.getNotBefore().toInstant().atOffset(ZoneOffset.UTC)));
+      pbenv.put("SSL_CLIENT_V_END",
+                TIMESTAMP_FORMATTER.format(peerCert.getNotAfter().toInstant().atOffset(ZoneOffset.UTC)));
     }
 
     // REQUEST_METHOD is not applicable to Gemini
@@ -101,5 +118,14 @@ public class CgiProcessBuilderFactory {
               String.format("%s %s", SERVER_SOFTWARE_PREFIX, Version.VERSION));
 
     return pb;
+  }
+
+  static String byteArrayToHexString(byte[] bytes) {
+    StringBuilder sb = new StringBuilder();
+    for (byte b : bytes) {
+      sb.append(Character.forDigit((b >> 4) & 0xF, 16));
+      sb.append(Character.forDigit(b & 0xF, 16));
+    }
+    return sb.toString();
   }
 }

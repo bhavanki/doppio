@@ -60,12 +60,28 @@ Place CGI scripts in the configured CGI directory. If no directory is configured
 Doppio tries to follow [RFC 3875](https://tools.ietf.org/html/rfc3875) in its CGI support. Here are salient limitations and variations from the standard in the implementation.
 
 * UTF-8 is expected for script response headers.
-* Not all meta-variables (environment variables) are supported. The standard variable REQUEST_METHOD is not applicable to Gemini. (More info to come here.)
+* The following meta-variables (environment variables) are not supported, since they are not applicable to Gemini: CONTENT_LENGTH, CONTENT_TYPE, REQUEST_METHOD. The REMOTE_IDENT meta-variable is not implemented.
 * Request bodies are not supported, since Gemini does not support them. The URI query string is the only input mechanism.
 * NPH (Non-Parsed Header) scripts are not supported.
 * Doppio does not check if a client redirect response is well-formed in terms of response headers.
 * Client redirect responses with document are not supported, because Gemini does not permit response bodies in redirects.
 * Status codes 20 and 30 are used as defaults for successful responses and redirects, instead of (HTTP) 200 and 302. The "bad request" status code is 59 instead of (HTTP) 400.
+
+Local redirects *are* supported, up to the maximum per request configured with the `maxLocalRedirects` server property.
+
+The following meta-variables, copied from
+[Apache mod_ssl](https://httpd.apache.org/docs/current/mod/mod_ssl.html), are
+also supported.
+
+* SSL_CIPHER
+* SSL_CLIENT_I_DN
+* SSL_CLIENT_M_SERIAL
+* SSL_CLIENT_M_VERSION
+* SSL_CLIENT_S_DN
+* SSL_CLIENT_V_START
+* SSL_CLIENT_V_END
+* SSL_PROTOCOL
+* SSL_SESSION_ID
 
 Text output from CGI scripts is subject to line ending conversion if the `forceCanonicalText` server property is set to `true`.
 
