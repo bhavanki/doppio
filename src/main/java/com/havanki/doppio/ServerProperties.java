@@ -36,6 +36,7 @@ public class ServerProperties {
   private static final int DEFAULT_NUM_THREADS = 4;
   private static final Path DEFAULT_CGI_DIR = null;
   private static final int DEFAULT_MAX_LOCAL_REDIRECTS = 10;
+  private static final boolean DEFAULT_FORCE_CANONICAL_TEXT = false;
   private static final Path DEFAULT_LOG_DIR = null;
   private static final List<Path> DEFAULT_SECURE_DIRS = List.of();
   private static final Path DEFAULT_KEYSTORE = Path.of("/etc/doppio/keystore.jks");
@@ -49,6 +50,7 @@ public class ServerProperties {
   private final int numThreads;
   private final Path cgiDir;
   private final int maxLocalRedirects;
+  private final boolean forceCanonicalText;
   private final Path logDir;
   private final List<Path> secureDirs;
   private final Path keystore;
@@ -69,6 +71,8 @@ public class ServerProperties {
     cgiDir = getPathProperty(props, "cgiDir", DEFAULT_CGI_DIR);
     maxLocalRedirects = getIntProperty(props, "maxLocalRedirects",
                                        DEFAULT_MAX_LOCAL_REDIRECTS);
+    forceCanonicalText = getBooleanProperty(props, "forceCanonicalText",
+                                            DEFAULT_FORCE_CANONICAL_TEXT);
     logDir = getPathProperty(props, "logDir", DEFAULT_LOG_DIR);
     secureDirs = getPathsProperty(props, "secureDirs", DEFAULT_SECURE_DIRS);
     keystore = getPathProperty(props, "keystore", DEFAULT_KEYSTORE);
@@ -114,6 +118,14 @@ public class ServerProperties {
     return Integer.parseInt(props.getProperty(key));
   }
 
+  private boolean getBooleanProperty(Properties props, String key,
+                                     boolean defaultValue) {
+    if (!props.containsKey(key)) {
+      return defaultValue;
+    }
+    return Boolean.parseBoolean(props.getProperty(key));
+  }
+
   /**
    * Gets the root (directory) for the server.
    *
@@ -157,6 +169,16 @@ public class ServerProperties {
    */
   public int getMaxLocalRedirects() {
     return maxLocalRedirects;
+  }
+
+  /**
+   * Gets whether text response bodies are forced to use canonical (DOS) line
+   * endings.
+   *
+   * @return whether canonical text is returned in responses
+   */
+  public boolean isForceCanonicalText() {
+    return forceCanonicalText;
   }
 
   /**

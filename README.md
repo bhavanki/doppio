@@ -47,7 +47,7 @@ Then, specify the truststore in the server properties file, and its password, us
 
 ## Static File Support
 
-Place static resources in the configured root directory. Resource content is streamed to clients exactly as it is in its resource. Notably, Doppio does not convert line endings in text files, including those that use CR ('\r') alone.
+Place static resources in the configured root directory. By default, resource content is streamed to clients exactly as it is in its resource. To force the conversion of line endings in text resources to canonical form (CRLF or "\r\n"), set the `forceCanonicalText` server property to `true`.
 
 Content type is detected using Java's built-in mechanism, with additional support for recognizing _.gmi_ and _.gemini_ files as text/gemini. There is no charset detection for text files.
 
@@ -66,6 +66,8 @@ Doppio tries to follow [RFC 3875](https://tools.ietf.org/html/rfc3875) in its CG
 * Doppio does not check if a client redirect response is well-formed in terms of response headers.
 * Client redirect responses with document are not supported, because Gemini does not permit response bodies in redirects.
 * Status codes 20 and 30 are used as defaults for successful responses and redirects, instead of (HTTP) 200 and 302. The "bad request" status code is 59 instead of (HTTP) 400.
+
+Text output from CGI scripts is subject to line ending conversion if the `forceCanonicalText` server property is set to `true`.
 
 ## Secure Directories
 

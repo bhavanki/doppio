@@ -272,7 +272,13 @@ public class RequestHandler implements Runnable {
 
             // Pipe the body content out when the response is not a redirect.
             if (!isRedirect) {
-              responseBodySize = processStdout.transferTo(out);
+              if (serverProps.isForceCanonicalText() && meta.startsWith("text/")) {
+                try (OutputStream bodyOut = new LineEndingConvertingOutputStream(out)) {
+                  responseBodySize = processStdout.transferTo(bodyOut);
+                }
+              } else {
+                responseBodySize = processStdout.transferTo(out);
+              }
             }
           }
         } finally {
@@ -338,7 +344,13 @@ public class RequestHandler implements Runnable {
       // the response body.
       statusCode = StatusCodes.SUCCESS;
       writeResponseHeader(out, statusCode, contentType);
-      responseBodySize = writeFile(out, resourceFile);
+      if (serverProps.isForceCanonicalText() && contentType.startsWith("text/")) {
+        try (OutputStream bodyOut = new LineEndingConvertingOutputStream(out)) {
+          responseBodySize = writeFile(bodyOut, resourceFile);
+        }
+      } else {
+        responseBodySize = writeFile(out, resourceFile);
+      }
     } catch (IOException e) {
       LOG.error("Failed to handle request", e);
       statusCode = StatusCodes.TEMPORARY_FAILURE;
@@ -403,7 +415,7 @@ public class RequestHandler implements Runnable {
     out.flush();
   }
 
-  private long writeFile(BufferedOutputStream out, File resourceFile)
+  private long writeFile(OutputStream out, File resourceFile)
     throws IOException {
     return Files.copy(resourceFile.toPath(), out);
   }
