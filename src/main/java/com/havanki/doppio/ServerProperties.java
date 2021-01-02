@@ -41,8 +41,8 @@ public class ServerProperties {
   private static final List<Path> DEFAULT_SECURE_DIRS = List.of();
   private static final Path DEFAULT_KEYSTORE = Path.of("/etc/doppio/keystore.jks");
   private static final String DEFAULT_KEYSTORE_PASSWORD = "doppio";
-  private static final Path DEFAULT_TRUSTSTORE = Path.of("/etc/doppio/truststore.jks");
-  private static final String DEFAULT_TRUSTSTORE_PASSWORD = "doppio";
+  private static final Path DEFAULT_TRUSTSTORE = null;
+  private static final String DEFAULT_TRUSTSTORE_PASSWORD = null;
 
   private final Path root;
   private final String host;
