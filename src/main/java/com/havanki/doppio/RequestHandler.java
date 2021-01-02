@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -96,7 +97,10 @@ public class RequestHandler implements Runnable {
     try (BoundedInputStream bis =
           new BoundedInputStream(socket.getInputStream(), MAX_REQUEST_BYTES);
          InputStreamReader isr =
-          new InputStreamReader(bis, StandardCharsets.UTF_8);
+          new InputStreamReader(bis,
+                                StandardCharsets.UTF_8.newDecoder()
+                                .onMalformedInput(CodingErrorAction.REPORT)
+                                .onUnmappableCharacter(CodingErrorAction.REPORT));
          BufferedReader in = new BufferedReader(isr);
          OutputStream os = socket.getOutputStream();
          BufferedOutputStream out = new BufferedOutputStream(os)) {
