@@ -106,7 +106,11 @@ public class RequestHandler implements Runnable {
          BufferedOutputStream out = new BufferedOutputStream(os)) {
 
       // Read the single-line Gemini request.
-      request = in.readLine().trim();
+      request = in.readLine();
+      if (request == null) {
+        throw new IOException("Read null line from request");
+      }
+      request = request.trim();
 
       // Parse the request as a URI.
       URI uri;
