@@ -35,13 +35,17 @@ public class RequestParser {
   private static final String GEMINI_SCHEME = "gemini";
 
   private final String host;
+  private final int port;
 
   /**
    * Creates a new parser.
+   *
    * @param  host the server host
+   * @param  port the server port
    */
-  public RequestParser(String host) {
+  public RequestParser(String host, int port) {
     this.host = host;
+    this.port = port;
   }
 
   /**
@@ -80,6 +84,12 @@ public class RequestParser {
                                        StatusCodes.PROXY_REQUEST_REFUSED);
     }
 
+    // Ensure the URI refers to the server's port, if any.
+    if (!hasMatchingPort(uri)) {
+      throw new RequestParserException("Invalid port",
+                                       StatusCodes.PROXY_REQUEST_REFUSED);
+    }
+
     return uri;
   }
 
@@ -89,6 +99,10 @@ public class RequestParser {
 
   private boolean hasMatchingHost(URI uri) {
     return host.equalsIgnoreCase(uri.getHost());
+  }
+
+  private boolean hasMatchingPort(URI uri) {
+    return uri.getPort() == -1 || uri.getPort() == port;
   }
 
   /**

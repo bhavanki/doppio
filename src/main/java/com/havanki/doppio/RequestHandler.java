@@ -74,7 +74,7 @@ public class RequestHandler implements Runnable {
     this.accessLogger = accessLogger;
     this.socket = socket;
 
-    requestParser = new RequestParser(serverProps.getHost());
+    requestParser = new RequestParser(serverProps.getHost(), serverProps.getPort());
   }
 
   @Override
