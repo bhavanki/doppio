@@ -1,5 +1,25 @@
 # Doppio Changelog
 
+## v0.3.0
+
+*unreleased*
+
+### Added
+
+* Text response line endings can be forcibly converted to canonical form ("\r\n") through a server configuration property.
+* The following CGI variables are now set: SSL_CIPHER, SSL_PROTOCOL, SSL_SESSION_ID, SSL_CLIENT_M_SERIAL, SSL_CLIENT_M_VERSION, SSL_CLIENT_V_START, SSL_CLIENT_V_END.
+
+### Changed
+
+* Logback logging is explicitly configured (through a _logback.xml_ file in the server JAR). The default logging level is now INFO.
+* Requests that cannot be decoded as UTF-8 strings are rejected, instead of handled using replacement strings.
+* Failing to read a request due to socket closure is now handled nicely.
+
+### Fixed
+
+* The server truststore is now optional (for when there are no secure resources).
+* Requests for the wrong port are rejected.
+
 ## v0.2.0
 
 *2020-12-25*
