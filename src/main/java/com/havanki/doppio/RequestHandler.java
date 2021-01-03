@@ -366,9 +366,9 @@ public class RequestHandler implements Runnable {
       statusCode = StatusCodes.SUCCESS;
       writeResponseHeader(out, statusCode, contentType);
       if (serverProps.isForceCanonicalText() && contentType.startsWith("text/")) {
-        try (OutputStream bodyOut = new LineEndingConvertingOutputStream(out)) {
-          responseBodySize = writeFile(bodyOut, resourceFile);
-        }
+        OutputStream bodyOut = new LineEndingConvertingOutputStream(out);
+        responseBodySize = writeFile(bodyOut, resourceFile);
+        bodyOut.flush(); // do not close, let try-with-resources handle it
       } else {
         responseBodySize = writeFile(out, resourceFile);
       }
