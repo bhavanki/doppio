@@ -37,6 +37,7 @@ import java.security.cert.X509Certificate;
 import java.util.Optional;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
+import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
 
 import org.slf4j.Logger;
@@ -84,11 +85,23 @@ public class RequestHandler implements Runnable {
     int statusCode = StatusCodes.PERMANENT_FAILURE;
     long responseBodySize = 0;
 
+    // Check for a valid session / successful handshake.
+    SSLSession session = socket.getSession();
+    if (!session.isValid()) {
+      LOG.debug("Session is invalid, rejecting");
+      try {
+        socket.close();
+      } catch (IOException e) {
+        LOG.debug("Failed to close socket", e);
+      }
+      return;
+    }
+
     // Retrieve the peer certificate, if any.
     X509Certificate peerCertificate;
     try {
       peerCertificate = (X509Certificate)
-          ((socket.getSession().getPeerCertificates())[0]);
+          ((session.getPeerCertificates())[0]);
     } catch (SSLPeerUnverifiedException e) {
       peerCertificate = null;
     }
