@@ -60,8 +60,8 @@ Place CGI scripts in the configured CGI directory. If no directory is configured
 Doppio tries to follow [RFC 3875](https://tools.ietf.org/html/rfc3875) in its CGI support. Here are salient limitations and variations from the standard in the implementation.
 
 * UTF-8 is expected for script response headers.
-* The following meta-variables (environment variables) are not supported, since they are not applicable to Gemini: CONTENT_LENGTH, CONTENT_TYPE, REQUEST_METHOD. The REMOTE_IDENT meta-variable is not implemented.
-* Request bodies are not supported, since Gemini does not support them. The URI query string is the only input mechanism.
+* The following meta-variables (environment variables) are not supported, since they are not applicable to Gemini: CONTENT_LENGTH, CONTENT_TYPE. The REMOTE_IDENT meta-variable is not implemented. REQUEST_METHOD is set to an empty string.
+* Request bodies are not supported, since Gemini does not support them. The URI query string and extra path information are the only input mechanisms.
 * NPH (Non-Parsed Header) scripts are not supported.
 * Doppio does not check if a client redirect response is well-formed in terms of response headers.
 * Client redirect responses with document are not supported, because Gemini does not permit response bodies in redirects.
@@ -69,19 +69,70 @@ Doppio tries to follow [RFC 3875](https://tools.ietf.org/html/rfc3875) in its CG
 
 Local redirects *are* supported, up to the maximum per request configured with the `maxLocalRedirects` server property.
 
-The following meta-variables, copied from
-[Apache mod_ssl](https://httpd.apache.org/docs/current/mod/mod_ssl.html), are
-also supported.
+The following TLS-related meta-variables are also supported. Those in the middle column are always set when applicable. Those in the right column, derived from [Apache mod_ssl](https://httpd.apache.org/docs/current/mod/mod_ssl.html), are only set when the `useModSslCgiMetaVars` server configuration property is set to `true`.
 
-* SSL_CIPHER
-* SSL_CLIENT_I_DN
-* SSL_CLIENT_M_SERIAL
-* SSL_CLIENT_M_VERSION
-* SSL_CLIENT_S_DN
-* SSL_CLIENT_V_START
-* SSL_CLIENT_V_END
-* SSL_PROTOCOL
-* SSL_SESSION_ID
+<table>
+  <tr>
+    <th>definition</th>
+    <th>TLS meta-variable</th>
+    <th>SSL (mod_ssl) meta-variable</th>
+  </tr>
+  <tr>
+    <td>cipher name</td>
+    <td>TLS_CIPHER</td>
+    <td>SSL_CIPHER</td>
+  </tr>
+  <tr>
+    <td>TLS protocol version</td>
+    <td>TLS_VERSION</td>
+    <td>SSL_PROTOCOL</td>
+  </tr>
+  <tr>
+    <td>session ID</td>
+    <td>TLS_SESSION_ID</td>
+    <td>SSL_SESSION_ID</td>
+  </tr>
+  <tr>
+    <td>client certificate serial number</td>
+    <td>TLS_CLIENT_SERIAL</td>
+    <td>SSL_CLIENT_M_SERIAL</td>
+  </tr>
+  <tr>
+    <td>client certificate version</td>
+    <td>TLS_CLIENT_VERSION</td>
+    <td>SSL_CLIENT_M_VERSION</td>
+  </tr>
+  <tr>
+    <td>client certificate fingerprint</td>
+    <td>TLS_CLIENT_HASH</td>
+    <td>-</td>
+  </tr>
+  <tr>
+    <td>client certificate issuer DN</td>
+    <td>TLS_CLIENT_ISSUER</td>
+    <td>SSL_CLIENT_I_DN</td>
+  </tr>
+  <tr>
+    <td>client certificate subject DN</td>
+    <td>TLS_CLIENT_SUBJECT</td>
+    <td>SSL_CLIENT_S_DN</td>
+  </tr>
+  <tr>
+    <td>client certificate validity start timestamp</td>
+    <td>TLS_CLIENT_NOT_BEFORE</td>
+    <td>SSL_CLIENT_V_START</td>
+  </tr>
+  <tr>
+    <td>client certificate validity end timestamp</td>
+    <td>TLS_CLIENT_NOT_AFTER</td>
+    <td>SSL_CLIENT_V_END</td>
+  </tr>
+  <tr>
+    <td>client certificate validity remaining time, in days</td>
+    <td>TLS_CLIENT_REMAIN</td>
+    <td>SSL_CLIENT_V_REMAIN</td>
+  </tr>
+</table>
 
 Text output from CGI scripts is subject to line ending conversion if the `forceCanonicalText` server property is set to `true`.
 

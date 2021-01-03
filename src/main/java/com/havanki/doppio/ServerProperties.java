@@ -43,6 +43,7 @@ public class ServerProperties {
   private static final String DEFAULT_KEYSTORE_PASSWORD = "doppio";
   private static final Path DEFAULT_TRUSTSTORE = null;
   private static final String DEFAULT_TRUSTSTORE_PASSWORD = null;
+  private static final boolean DEFAULT_SET_MOD_SSL_CGI_META_VARS = false;
 
   private final Path root;
   private final String host;
@@ -57,6 +58,7 @@ public class ServerProperties {
   private final String keystorePassword;
   private final Path truststore;
   private final String truststorePassword;
+  private final boolean setModSslCgiMetaVars;
 
   /**
    * Creates a new set of server properties from Java properties.
@@ -81,6 +83,8 @@ public class ServerProperties {
     truststore = getPathProperty(props, "truststore", DEFAULT_TRUSTSTORE);
     truststorePassword = props.getProperty("truststorePassword",
                                          DEFAULT_TRUSTSTORE_PASSWORD);
+    setModSslCgiMetaVars = getBooleanProperty(props, "setModSslCgiMetaVars",
+                                              DEFAULT_SET_MOD_SSL_CGI_META_VARS);
 
     if (port < 1 || port > 65535) {
       throw new IllegalStateException("port must be between 1 and 65535");
@@ -242,5 +246,15 @@ public class ServerProperties {
    */
   public String getTruststorePassword() {
     return truststorePassword;
+  }
+
+  /**
+   * Gets whether CGI meta-variables defined by Apache mod_ssl should be set
+   * when executing a CGI script.
+   *
+   * @return whether to set mod_ssl CGI meta-variables
+   */
+  public boolean isSetModSslCgiMetaVars() {
+    return setModSslCgiMetaVars;
   }
 }

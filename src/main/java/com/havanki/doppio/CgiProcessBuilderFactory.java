@@ -24,20 +24,32 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 
 import javax.net.ssl.SSLSocket;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A factory for {@code ProcessBuilder} objects that can run CGI scripts.
  */
 public class CgiProcessBuilderFactory {
 
+  private static final Logger LOG =
+    LoggerFactory.getLogger(CgiProcessBuilderFactory.class);
+
   private static final String AUTH_TYPE = "Certificate";   // whatever
   private static final String GATEWAY_INTERFACE = "CGI/1.1";
+  private static final String REQUEST_METHOD = "";         // must be set
   private static final String SERVER_PROTOCOL = "GEMINI";  // probably right
   private static final String SERVER_SOFTWARE_PREFIX = "Doppio";
 
@@ -90,26 +102,50 @@ public class CgiProcessBuilderFactory {
       pbenv.put("REMOTE_HOST", remoteSocketAddress.getHostString());
     }
 
+    // Basic TLS variables
+    pbenv.put("TLS_CIPHER", socket.getSession().getCipherSuite());
+    pbenv.put("TLS_VERSION", socket.getSession().getProtocol());
+    pbenv.put("TLS_SESSION_ID", byteArrayToHexString(socket.getSession().getId()));
+
     // Apache mod_ssl variables
-    pbenv.put("SSL_CIPHER", socket.getSession().getCipherSuite());
-    pbenv.put("SSL_PROTOCOL", socket.getSession().getProtocol());
-    pbenv.put("SSL_SESSION_ID", byteArrayToHexString(socket.getSession().getId()));
+    if (serverProps.isSetModSslCgiMetaVars()) {
+      pbenv.put("SSL_CIPHER", socket.getSession().getCipherSuite());
+      pbenv.put("SSL_PROTOCOL", socket.getSession().getProtocol());
+      pbenv.put("SSL_SESSION_ID", byteArrayToHexString(socket.getSession().getId()));
+    }
 
     if (peerCert != null) {
       pbenv.put("AUTH_TYPE", AUTH_TYPE);
       pbenv.put("REMOTE_USER", peerCert.getSubjectX500Principal().getName());
+      String fingerprint = fingerprint(peerCert);
+      if (fingerprint != null) {
+        pbenv.put("TLS_CLIENT_HASH", fingerprint(peerCert));
+      }
+      pbenv.put("TLS_CLIENT_ISSUER", peerCert.getIssuerX500Principal().getName());
+      OffsetDateTime notBefore = peerCert.getNotBefore().toInstant().atOffset(ZoneOffset.UTC);
+      OffsetDateTime notAfter = peerCert.getNotAfter().toInstant().atOffset(ZoneOffset.UTC);
+      String remain = Long.toString(OffsetDateTime.now(ZoneOffset.UTC)
+                                    .until(notAfter, ChronoUnit.DAYS));
+      pbenv.put("TLS_CLIENT_NOT_BEFORE", TIMESTAMP_FORMATTER.format(notBefore));
+      pbenv.put("TLS_CLIENT_NOT_AFTER", TIMESTAMP_FORMATTER.format(notAfter));
+      pbenv.put("TLS_CLIENT_REMAIN", remain);
+      pbenv.put("TLS_CLIENT_SERIAL", peerCert.getSerialNumber().toString());
+      pbenv.put("TLS_CLIENT_SUBJECT", peerCert.getSubjectX500Principal().getName());
+      pbenv.put("TLS_CLIENT_VERSION", Integer.toString(peerCert.getVersion()));
+
       // More Apache mod_ssl variables
-      pbenv.put("SSL_CLIENT_I_DN", peerCert.getIssuerX500Principal().getName());
-      pbenv.put("SSL_CLIENT_M_SERIAL", peerCert.getSerialNumber().toString());
-      pbenv.put("SSL_CLIENT_M_VERSION", Integer.toString(peerCert.getVersion()));
-      pbenv.put("SSL_CLIENT_S_DN", peerCert.getSubjectX500Principal().getName());
-      pbenv.put("SSL_CLIENT_V_START",
-                TIMESTAMP_FORMATTER.format(peerCert.getNotBefore().toInstant().atOffset(ZoneOffset.UTC)));
-      pbenv.put("SSL_CLIENT_V_END",
-                TIMESTAMP_FORMATTER.format(peerCert.getNotAfter().toInstant().atOffset(ZoneOffset.UTC)));
+      if (serverProps.isSetModSslCgiMetaVars()) {
+        pbenv.put("SSL_CLIENT_I_DN", peerCert.getIssuerX500Principal().getName());
+        pbenv.put("SSL_CLIENT_M_SERIAL", peerCert.getSerialNumber().toString());
+        pbenv.put("SSL_CLIENT_M_VERSION", Integer.toString(peerCert.getVersion()));
+        pbenv.put("SSL_CLIENT_S_DN", peerCert.getSubjectX500Principal().getName());
+        pbenv.put("SSL_CLIENT_V_START", TIMESTAMP_FORMATTER.format(notBefore));
+        pbenv.put("SSL_CLIENT_V_END", TIMESTAMP_FORMATTER.format(notAfter));
+        pbenv.put("SSL_CLIENT_V_REMAIN", remain);
+      }
     }
 
-    // REQUEST_METHOD is not applicable to Gemini
+    pbenv.put("REQUEST_METHOD", REQUEST_METHOD);
     pbenv.put("SCRIPT_NAME", "/" + serverProps.getRoot().relativize(splitPaths[0]).toString());
     pbenv.put("SERVER_NAME", serverProps.getHost());
     pbenv.put("SERVER_PORT", Integer.toString(serverProps.getPort()));
@@ -127,5 +163,19 @@ public class CgiProcessBuilderFactory {
       sb.append(Character.forDigit(b & 0xF, 16));
     }
     return sb.toString();
+  }
+
+  static String fingerprint(X509Certificate cert) {
+    try {
+      MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+      return byteArrayToHexString(sha256.digest(cert.getEncoded()));
+    } catch (NoSuchAlgorithmException e) {
+      // Shouldn't happen but ...
+      LOG.warn("This JDK does not support SHA-256, cannot fingerprint cert", e);
+      return null;
+    } catch (CertificateEncodingException e) {
+      LOG.warn("Failed to encode cert, cannot fingerprint", e);
+      return null;
+    }
   }
 }

@@ -4,6 +4,14 @@
 
 *unreleased*
 
+### Added
+
+* The following CGI meta-variables are now set: REQUEST_METHOD (to an empty string), SSL_CLIENT_V_REMAIN (when configured), TLS_CIPHER, TLS_CLIENT_HASH, TLS_CLIENT_ISSUER, TLS_CLIENT_NOT_AFTER, TLS_CLIENT_NOT_BEFORE, TLS_CLIENT_REMAIN, TLS_CLIENT_SERIAL, TLS_CLIENT_SUBJECT, TLS_CLIENT_VERSION, TLS_SESSION_ID, TLS_VERSION.
+
+### Changed
+
+* SSL_* (mod_ssl) CGI meta-variables are only set when the server is configured to set them.
+
 ## v0.3.0
 
 *2021-01-02*
