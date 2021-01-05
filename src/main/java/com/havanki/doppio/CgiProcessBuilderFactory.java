@@ -91,6 +91,8 @@ public class CgiProcessBuilderFactory {
       pbenv.put("PATH_TRANSLATED",
                 serverProps.getRoot().resolve(extraPath).toString());
     }
+    pbenv.put("GEMINI_URL", uri.toString());     // note that this is normalized
+    pbenv.put("GEMINI_URL_PATH", uri.getPath()); // note that this is decoded
     if (uri.getQuery() != null) {
       pbenv.put("QUERY_STRING", uri.getQuery());
     }
