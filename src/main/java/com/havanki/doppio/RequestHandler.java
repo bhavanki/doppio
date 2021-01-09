@@ -366,7 +366,8 @@ public class RequestHandler implements Runnable {
       LOG.debug("Detected content type: {}", contentType);
 
       // Detect the file's charset.
-      String detectedCharset = serverProps.isEnableCharsetDetection() ?
+      String detectedCharset = contentType.startsWith("text/") &&
+        serverProps.isEnableCharsetDetection() ?
         charsetDetector.detect(resourceFile) : null;
       LOG.debug("Detected charset: {}", detectedCharset);
 
