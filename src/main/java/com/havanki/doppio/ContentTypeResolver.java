@@ -28,18 +28,16 @@ import java.util.List;
  */
 public class ContentTypeResolver {
 
-  /**
-   * The default content type to return when all else fails.
-   */
-  public static final String DEFAULT_CONTENT_TYPE = "application/octet-stream";
-
   private static final FileNameMap FILE_NAME_MAP =
     URLConnection.getFileNameMap();
 
   private final List<String> textGeminiSuffixes;
+  private final String defaultContentType;
 
-  public ContentTypeResolver(List<String> textGeminiSuffixes) {
+  public ContentTypeResolver(List<String> textGeminiSuffixes,
+                             String defaultContentType) {
     this.textGeminiSuffixes = textGeminiSuffixes;
+    this.defaultContentType = defaultContentType;
   }
 
   /**
@@ -48,7 +46,7 @@ public class ContentTypeResolver {
    * text/gemini.<p>
    *
    * If none of the usual detection techniques work, then this method returns
-   * {@link #DEFAULT_CONTENT_TYPE}.
+   * a default content type.
    *
    * @param  fileName name of file with content
    * @return          content type
@@ -58,6 +56,6 @@ public class ContentTypeResolver {
       return "text/gemini";
     }
     String contentType = FILE_NAME_MAP.getContentTypeFor(fileName);
-    return contentType != null ? contentType : DEFAULT_CONTENT_TYPE;
+    return contentType != null ? contentType : defaultContentType;
   }
 }

@@ -71,7 +71,9 @@ public class RequestHandler implements Runnable {
                         AccessLogger accessLogger,
                         SSLSocket socket) {
     this.serverProps = serverProps;
-    contentTypeResolver = new ContentTypeResolver(serverProps.getTextGeminiSuffixes());
+    contentTypeResolver =
+      new ContentTypeResolver(serverProps.getTextGeminiSuffixes(),
+                              serverProps.getDefaultContentType());
     this.accessLogger = accessLogger;
     this.socket = socket;
 

@@ -38,6 +38,7 @@ public class ServerProperties {
   private static final int DEFAULT_MAX_LOCAL_REDIRECTS = 10;
   private static final List<String> DEFAULT_TEXT_GEMINI_SUFFIXES =
     List.of(".gmi", ".gemini");
+  private static final String DEFAULT_DEFAULT_CONTENT_TYPE = "text/plain";
   private static final boolean DEFAULT_FORCE_CANONICAL_TEXT = false;
   private static final Path DEFAULT_LOG_DIR = null;
   private static final List<Path> DEFAULT_SECURE_DIRS = List.of();
@@ -55,6 +56,7 @@ public class ServerProperties {
   private final int maxLocalRedirects;
   private final boolean forceCanonicalText;
   private final List<String> textGeminiSuffixes;
+  private final String defaultContentType;
   private final Path logDir;
   private final List<Path> secureDirs;
   private final Path keystore;
@@ -80,6 +82,8 @@ public class ServerProperties {
                                             DEFAULT_FORCE_CANONICAL_TEXT);
     textGeminiSuffixes = getStringListProperty(props, "textGeminiSuffixes",
                                                DEFAULT_TEXT_GEMINI_SUFFIXES);
+    defaultContentType = props.getProperty("defaultContentType",
+                                           DEFAULT_DEFAULT_CONTENT_TYPE);
     logDir = getPathProperty(props, "logDir", DEFAULT_LOG_DIR);
     secureDirs = getPathsProperty(props, "secureDirs", DEFAULT_SECURE_DIRS);
     keystore = getPathProperty(props, "keystore", DEFAULT_KEYSTORE);
@@ -207,6 +211,15 @@ public class ServerProperties {
    */
   public List<String> getTextGeminiSuffixes() {
     return textGeminiSuffixes;
+  }
+
+  /**
+   * Gets the default content type for resources.
+   *
+   * @return resource default content type
+   */
+  public String getDefaultContentType() {
+    return defaultContentType;
   }
 
   /**
