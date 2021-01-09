@@ -152,3 +152,5 @@ _This feature is very basic and may be expanded in the future._
 ## License
 
 [GNU Affero General Public License v3](LICENSE)
+
+The [example systemd service file](etc/doppio.service) is separately available under the [MIT License](https://opensource.org/licenses/MIT).
