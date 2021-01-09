@@ -34,6 +34,12 @@ public class ContentTypeResolver {
   private final List<String> textGeminiSuffixes;
   private final String defaultContentType;
 
+  /**
+   * Creates a new resolver.
+   *
+   * @param  textGeminiSuffixes list of file suffixes for text/gemini resources
+   * @param  defaultContentType default content type, for when detection fails
+   */
   public ContentTypeResolver(List<String> textGeminiSuffixes,
                              String defaultContentType) {
     this.textGeminiSuffixes = textGeminiSuffixes;
