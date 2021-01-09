@@ -11,6 +11,7 @@
 ### Changed
 
 * SSL_* (mod_ssl) CGI meta-variables are only set when the server is configured to set them.
+* The list of suffixes for resources with content type text/gemini is now configurable as a server configuration property.
 
 ## v0.3.0
 

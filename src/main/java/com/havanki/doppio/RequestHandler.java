@@ -54,10 +54,8 @@ public class RequestHandler implements Runnable {
   private static final int MAX_REQUEST_BYTES = 1026; // 1024 + CRLF
   private static final String CRLF = "\r\n";
 
-  private final ContentTypeResolver contentTypeResolver =
-    new ContentTypeResolver();
-
   private final ServerProperties serverProps;
+  private final ContentTypeResolver contentTypeResolver;
   private final AccessLogger accessLogger;
   private final SSLSocket socket;
   private final RequestParser requestParser;
@@ -73,6 +71,7 @@ public class RequestHandler implements Runnable {
                         AccessLogger accessLogger,
                         SSLSocket socket) {
     this.serverProps = serverProps;
+    contentTypeResolver = new ContentTypeResolver(serverProps.getTextGeminiSuffixes());
     this.accessLogger = accessLogger;
     this.socket = socket;
 
@@ -342,7 +341,7 @@ public class RequestHandler implements Runnable {
         // serve from it.
         File resourceDir = resourceFile;
         resourceFile = null;
-        for (String suffix : contentTypeResolver.getGeminiSuffixes()) {
+        for (String suffix : serverProps.getTextGeminiSuffixes()) {
           File indexFile = new File(resourceDir, "index" + suffix);
           if (indexFile.exists()) {
             resourceFile = indexFile;

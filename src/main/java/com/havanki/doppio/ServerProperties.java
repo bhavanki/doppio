@@ -36,6 +36,8 @@ public class ServerProperties {
   private static final int DEFAULT_NUM_THREADS = 4;
   private static final Path DEFAULT_CGI_DIR = null;
   private static final int DEFAULT_MAX_LOCAL_REDIRECTS = 10;
+  private static final List<String> DEFAULT_TEXT_GEMINI_SUFFIXES =
+    List.of(".gmi", ".gemini");
   private static final boolean DEFAULT_FORCE_CANONICAL_TEXT = false;
   private static final Path DEFAULT_LOG_DIR = null;
   private static final List<Path> DEFAULT_SECURE_DIRS = List.of();
@@ -52,6 +54,7 @@ public class ServerProperties {
   private final Path cgiDir;
   private final int maxLocalRedirects;
   private final boolean forceCanonicalText;
+  private final List<String> textGeminiSuffixes;
   private final Path logDir;
   private final List<Path> secureDirs;
   private final Path keystore;
@@ -75,6 +78,8 @@ public class ServerProperties {
                                        DEFAULT_MAX_LOCAL_REDIRECTS);
     forceCanonicalText = getBooleanProperty(props, "forceCanonicalText",
                                             DEFAULT_FORCE_CANONICAL_TEXT);
+    textGeminiSuffixes = getStringListProperty(props, "textGeminiSuffixes",
+                                               DEFAULT_TEXT_GEMINI_SUFFIXES);
     logDir = getPathProperty(props, "logDir", DEFAULT_LOG_DIR);
     secureDirs = getPathsProperty(props, "secureDirs", DEFAULT_SECURE_DIRS);
     keystore = getPathProperty(props, "keystore", DEFAULT_KEYSTORE);
@@ -95,6 +100,16 @@ public class ServerProperties {
     if (maxLocalRedirects < 0) {
       throw new IllegalStateException("maxLocalRedirects must be non-negative");
     }
+  }
+
+  private List<String> getStringListProperty(Properties props, String key,
+                                             List<String> defaultValue) {
+    if (!props.containsKey(key)) {
+      return defaultValue;
+    }
+    return Arrays.stream(props.getProperty(key).split(","))
+        .filter(s -> !s.isEmpty())
+        .collect(Collectors.toList());
   }
 
   private Path getPathProperty(Properties props, String key, Path defaultValue) {
@@ -183,6 +198,15 @@ public class ServerProperties {
    */
   public boolean isForceCanonicalText() {
     return forceCanonicalText;
+  }
+
+  /**
+   * Get the suffixes for resources that have content type text/gemini.
+   *
+   * @return suffixes for text/gemini resources
+   */
+  public List<String> getTextGeminiSuffixes() {
+    return textGeminiSuffixes;
   }
 
   /**

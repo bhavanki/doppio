@@ -33,7 +33,7 @@ public class ContentTypeResolverTest {
 
   @BeforeEach
   public void beforeEach() {
-    resolver = new ContentTypeResolver();
+    resolver = new ContentTypeResolver(List.of(".gmi", ".gemini"));
   }
 
   @Test
@@ -51,11 +51,5 @@ public class ContentTypeResolverTest {
   public void testDefaultDetection() {
     assertEquals("application/octet-stream",
     resolver.getContentTypeFor("file"));
-  }
-
-  @Test
-  public void testGeminiSuffixes() {
-    assertIterableEquals(List.of(".gmi", ".gemini"),
-                         resolver.getGeminiSuffixes());
   }
 }
