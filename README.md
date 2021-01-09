@@ -49,7 +49,12 @@ Then, specify the truststore in the server properties file, and its password, us
 
 Place static resources in the configured root directory. By default, resource content is streamed to clients exactly as it is in its resource. To force the conversion of line endings in text resources to canonical form (CRLF or "\r\n"), set the `forceCanonicalText` server property to `true`.
 
-Content type is detected using Java's built-in mechanism, with additional support for recognizing _.gmi_ and _.gemini_ files as text/gemini. There is no charset detection for text files.
+Content type is detected using Java's built-in mechanism, with additional support for recognizing a configurable set of file suffixes for text/gemini resources (defaults _.gmi_ and _.gemini_).
+
+Charset for text resources is optionally detected using [juniversalchardet](https://github.com/albfernandez/juniversalchardet). By default, charset detection is disabled. Caveats:
+
+* Charset detection is always based on heuristics, so the detector may guess incorrectly sometimes.
+* Detection requires reading the text resource an additional time before it is served, negatively affecting performance.
 
 When a directory is requested, Doppio looks for an index file, ending with any supported filename suffix for text/gemini files (e.g., _index.gmi_), and returns the first one it finds. Otherwise, it returns a 51 (not found) response.
 
@@ -134,7 +139,7 @@ The following TLS-related meta-variables are also supported. Those in the middle
   </tr>
 </table>
 
-Text output from CGI scripts is subject to line ending conversion if the `forceCanonicalText` server property is set to `true`.
+Text output from CGI scripts is subject to line ending conversion if the `forceCanonicalText` server property is set to `true`. Because CGI scripts emit their own response headers, Doppio does not detect content type or charset for them.
 
 ## Secure Directories
 

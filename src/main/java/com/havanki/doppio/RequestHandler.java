@@ -55,10 +55,11 @@ public class RequestHandler implements Runnable {
   private static final String CRLF = "\r\n";
 
   private final ServerProperties serverProps;
-  private final ContentTypeResolver contentTypeResolver;
   private final AccessLogger accessLogger;
   private final SSLSocket socket;
   private final RequestParser requestParser;
+  private final ContentTypeResolver contentTypeResolver;
+  private final CharsetDetector charsetDetector;
 
   /**
    * Creates a request handler.
@@ -71,13 +72,15 @@ public class RequestHandler implements Runnable {
                         AccessLogger accessLogger,
                         SSLSocket socket) {
     this.serverProps = serverProps;
-    contentTypeResolver =
-      new ContentTypeResolver(serverProps.getTextGeminiSuffixes(),
-                              serverProps.getDefaultContentType());
     this.accessLogger = accessLogger;
     this.socket = socket;
 
     requestParser = new RequestParser(serverProps.getHost(), serverProps.getPort());
+    contentTypeResolver =
+      new ContentTypeResolver(serverProps.getTextGeminiSuffixes(),
+                              serverProps.getDefaultContentType());
+    charsetDetector =
+      new CharsetDetector(serverProps.getDefaultCharset());
   }
 
   @Override
@@ -362,10 +365,15 @@ public class RequestHandler implements Runnable {
       String contentType = contentTypeResolver.getContentTypeFor(fileName);
       LOG.debug("Detected content type: {}", contentType);
 
+      // Detect the file's charset.
+      String detectedCharset = serverProps.isEnableCharsetDetection() ?
+        charsetDetector.detect(resourceFile) : null;
+      LOG.debug("Detected charset: {}", detectedCharset);
+
       // Write out a SUCCESS response header and then the file contents as
       // the response body.
       statusCode = StatusCodes.SUCCESS;
-      writeResponseHeader(out, statusCode, contentType);
+      writeResponseHeader(out, statusCode, formatMeta(contentType, detectedCharset));
       if (serverProps.isForceCanonicalText() && contentType.startsWith("text/")) {
         OutputStream bodyOut = new LineEndingConvertingOutputStream(out);
         responseBodySize = writeFile(bodyOut, resourceFile);
@@ -425,6 +433,15 @@ public class RequestHandler implements Runnable {
     // that the CGI directory itself should be the "script" path, and
     // everything else is extra path information, but that isn't valid anyway.
     return Optional.empty();
+  }
+
+  private static final String CONTENT_TYPE_WITH_CHARSET_FORMAT = "%s;charset=%s";
+
+  private static String formatMeta(String contentType, String charset) {
+    if (charset == null) {
+      return contentType;
+    }
+    return String.format(CONTENT_TYPE_WITH_CHARSET_FORMAT, contentType, charset);
   }
 
   private static final String RESPONSE_HEADER_FORMAT = "%d %s" + CRLF;

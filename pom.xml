@@ -36,6 +36,11 @@
       <scope>runtime</scope>
     </dependency>
     <dependency>
+      <groupId>com.github.albfernandez</groupId>
+      <artifactId>juniversalchardet</artifactId>
+      <version>2.4.0</version>
+    </dependency>
+    <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-api</artifactId>
       <version>5.7.0</version>
@@ -45,6 +50,12 @@
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
       <version>5.7.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-inline</artifactId>
+      <version>3.7.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -110,6 +121,10 @@
             <relocation>
               <pattern>ch.qos.logback</pattern>
               <shadedPattern>com.havanki.doppio.shaded.ch.qos.logback</shadedPattern>
+            </relocation>
+            <relocation>
+              <pattern>org.mozilla</pattern>
+              <shadedPattern>com.havanki.doppio.shaded.org.mozilla</shadedPattern>
             </relocation>
           </relocations>
         </configuration>

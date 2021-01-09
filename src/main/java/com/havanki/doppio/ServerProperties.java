@@ -39,6 +39,8 @@ public class ServerProperties {
   private static final List<String> DEFAULT_TEXT_GEMINI_SUFFIXES =
     List.of(".gmi", ".gemini");
   private static final String DEFAULT_DEFAULT_CONTENT_TYPE = "text/plain";
+  private static final boolean DEFAULT_ENABLE_CHARSET_DETECTION = false;
+  private static final String DEFAULT_DEFAULT_CHARSET = null;
   private static final boolean DEFAULT_FORCE_CANONICAL_TEXT = false;
   private static final Path DEFAULT_LOG_DIR = null;
   private static final List<Path> DEFAULT_SECURE_DIRS = List.of();
@@ -57,6 +59,8 @@ public class ServerProperties {
   private final boolean forceCanonicalText;
   private final List<String> textGeminiSuffixes;
   private final String defaultContentType;
+  private final boolean enableCharsetDetection;
+  private final String defaultCharset;
   private final Path logDir;
   private final List<Path> secureDirs;
   private final Path keystore;
@@ -84,6 +88,10 @@ public class ServerProperties {
                                                DEFAULT_TEXT_GEMINI_SUFFIXES);
     defaultContentType = props.getProperty("defaultContentType",
                                            DEFAULT_DEFAULT_CONTENT_TYPE);
+    enableCharsetDetection = getBooleanProperty(props, "enableCharsetDetection",
+                                                DEFAULT_ENABLE_CHARSET_DETECTION);
+    defaultCharset = props.getProperty("defaultCharset",
+                                       DEFAULT_DEFAULT_CHARSET);
     logDir = getPathProperty(props, "logDir", DEFAULT_LOG_DIR);
     secureDirs = getPathsProperty(props, "secureDirs", DEFAULT_SECURE_DIRS);
     keystore = getPathProperty(props, "keystore", DEFAULT_KEYSTORE);
@@ -220,6 +228,24 @@ public class ServerProperties {
    */
   public String getDefaultContentType() {
     return defaultContentType;
+  }
+
+  /**
+   * Gets whether charset detection of text resources is enabled.
+   *
+   * @return whether charset detection of text resources is enabled
+   */
+  public boolean isEnableCharsetDetection() {
+    return enableCharsetDetection;
+  }
+
+  /**
+   * Gets the default charset for text resources.
+   *
+   * @return text resource default charset
+   */
+  public String getDefaultCharset() {
+    return defaultCharset;
   }
 
   /**
