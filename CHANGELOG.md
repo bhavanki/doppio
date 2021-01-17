@@ -1,8 +1,12 @@
 # Doppio Changelog
 
-## v0.4.0?
+## v0.5.0
 
 *unreleased*
+
+## v0.4.0
+
+*2021-01-16*
 
 ### Added
 
@@ -11,6 +15,7 @@
 
 ### Changed
 
+* The secure directory feature is replaced by secure domains, which can assign different truststores (or not at all) to different directories. There is no longer a need to set a server-wide truststore.
 * SSL_* (mod_ssl) CGI meta-variables are only set when the server is configured to set them.
 * The list of suffixes for resources with content type text/gemini is now configurable as a server configuration property.
 * The default content type for resources, used when one cannot be detected, is
