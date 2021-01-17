@@ -70,6 +70,11 @@ public final class StatusCodes {
    */
   public static final int CLIENT_CERTIFICATE_REQUIRED = 60;
   /**
+   * CERTIFICATE_NOT_AUTHORISED: The supplied client certificate does not grant
+   * access to the requested resource.
+   */
+  public static final int CERTIFICATE_NOT_AUTHORISED = 61;
+  /**
    * CERTIFICATE_NOT_VALID: The supplied client certificate is invalid,
    * regardless of the requested resource.
    */

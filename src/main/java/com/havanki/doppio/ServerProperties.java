@@ -19,8 +19,11 @@
 
 package com.havanki.doppio;
 
+import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
@@ -43,11 +46,8 @@ public class ServerProperties {
   private static final String DEFAULT_DEFAULT_CHARSET = null;
   private static final boolean DEFAULT_FORCE_CANONICAL_TEXT = false;
   private static final Path DEFAULT_LOG_DIR = null;
-  private static final List<Path> DEFAULT_SECURE_DIRS = List.of();
   private static final Path DEFAULT_KEYSTORE = Path.of("/etc/doppio/keystore.jks");
   private static final String DEFAULT_KEYSTORE_PASSWORD = "doppio";
-  private static final Path DEFAULT_TRUSTSTORE = null;
-  private static final String DEFAULT_TRUSTSTORE_PASSWORD = null;
   private static final boolean DEFAULT_SET_MOD_SSL_CGI_META_VARS = false;
 
   private final Path root;
@@ -62,11 +62,9 @@ public class ServerProperties {
   private final boolean enableCharsetDetection;
   private final String defaultCharset;
   private final Path logDir;
-  private final List<Path> secureDirs;
+  private final List<SecureDomain> secureDomains;
   private final Path keystore;
   private final String keystorePassword;
-  private final Path truststore;
-  private final String truststorePassword;
   private final boolean setModSslCgiMetaVars;
 
   /**
@@ -93,15 +91,17 @@ public class ServerProperties {
     defaultCharset = props.getProperty("defaultCharset",
                                        DEFAULT_DEFAULT_CHARSET);
     logDir = getPathProperty(props, "logDir", DEFAULT_LOG_DIR);
-    secureDirs = getPathsProperty(props, "secureDirs", DEFAULT_SECURE_DIRS);
     keystore = getPathProperty(props, "keystore", DEFAULT_KEYSTORE);
     keystorePassword = props.getProperty("keystorePassword",
                                          DEFAULT_KEYSTORE_PASSWORD);
-    truststore = getPathProperty(props, "truststore", DEFAULT_TRUSTSTORE);
-    truststorePassword = props.getProperty("truststorePassword",
-                                         DEFAULT_TRUSTSTORE_PASSWORD);
     setModSslCgiMetaVars = getBooleanProperty(props, "setModSslCgiMetaVars",
                                               DEFAULT_SET_MOD_SSL_CGI_META_VARS);
+
+    try {
+      secureDomains = buildSecureDomains(props);
+    } catch (GeneralSecurityException | IOException e) {
+      throw new IllegalStateException("Failed to build secure domain", e);
+    }
 
     if (port < 1 || port > 65535) {
       throw new IllegalStateException("port must be between 1 and 65535");
@@ -131,17 +131,6 @@ public class ServerProperties {
     return FileSystems.getDefault().getPath(props.getProperty(key));
   }
 
-  private List<Path> getPathsProperty(Properties props, String key,
-                                      List<Path> defaultValue) {
-    if (!props.containsKey(key)) {
-      return defaultValue;
-    }
-    return Arrays.stream(props.getProperty(key).split(":"))
-        .filter(s -> !s.isEmpty())
-        .map(p -> FileSystems.getDefault().getPath(p))
-        .collect(Collectors.toList());
-  }
-
   private int getIntProperty(Properties props, String key, int defaultValue) {
     if (!props.containsKey(key)) {
       return defaultValue;
@@ -155,6 +144,30 @@ public class ServerProperties {
       return defaultValue;
     }
     return Boolean.parseBoolean(props.getProperty(key));
+  }
+
+  private List<SecureDomain> buildSecureDomains(Properties props)
+    throws GeneralSecurityException, IOException {
+    List<SecureDomain> secureDomains = new ArrayList<>();
+    for (String key : props.stringPropertyNames()) {
+      if (!key.startsWith("secureDomain.")) {
+        continue;
+      }
+      String[] domainValues = props.getProperty(key).split(":", 3);
+      Path path = FileSystems.getDefault().getPath(domainValues[0]);
+      if (domainValues.length > 1) {
+        Path truststore = FileSystems.getDefault().getPath(domainValues[1]);
+        if (domainValues.length < 3) {
+          throw new IllegalStateException("Value for secure domain " + key +
+                                          " specifies a truststore without " +
+                                          "a password");
+        }
+        secureDomains.add(new SecureDomain(path, truststore, domainValues[2]));
+      } else {
+        secureDomains.add(new SecureDomain(path));
+      }
+    }
+    return secureDomains;
   }
 
   /**
@@ -267,12 +280,12 @@ public class ServerProperties {
   }
 
   /**
-   * Gets the secure directories for the server.
+   * Gets the secure domains for the server.
    *
-   * @return secure directories
+   * @return secure domains
    */
-  public List<Path> getSecureDirs() {
-    return secureDirs;
+  public List<SecureDomain> getSecureDomains() {
+    return secureDomains;
   }
 
   /**
@@ -291,24 +304,6 @@ public class ServerProperties {
    */
   public String getKeystorePassword() {
     return keystorePassword;
-  }
-
-  /**
-   * Gets the truststore containing trusted certificates.
-   *
-   * @return truststore
-   */
-  public Path getTruststore() {
-    return truststore;
-  }
-
-  /**
-   * Gets the password for the truststore.
-   *
-   * @return truststore password
-   */
-  public String getTruststorePassword() {
-    return truststorePassword;
   }
 
   /**

@@ -36,15 +36,6 @@ Finally, run the JAR.
 $ java -jar target/doppio-*.jar doppio.properties
 ```
 
-To support TLS client authentication, create a truststore containing imported, trusted certificates of the authorities that sign client certificates (or the client certificates themselves).
-
-```
-$ keytool -importcert -file trustedcert.pem -alias trustedcert \
-  -keystore doppiots.jks
-```
-
-Then, specify the truststore in the server properties file, and its password, using the `truststore` and `truststorePassword` properties, respectively.
-
 ## Static File Support
 
 Place static resources in the configured root directory. By default, resource content is streamed to clients exactly as it is in its resource. To force the conversion of line endings in text resources to canonical form (CRLF or "\r\n"), set the `forceCanonicalText` server property to `true`.
@@ -141,13 +132,29 @@ The following TLS-related meta-variables are also supported. Those in the middle
 
 Text output from CGI scripts is subject to line ending conversion if the `forceCanonicalText` server property is set to `true`. Because CGI scripts emit their own response headers, Doppio does not detect content type or charset for them.
 
-## Secure Directories
+## Secure Domains
 
-Place resources (static or CGI) which should require client authentication in one of the configured secure directories. If no directories are configured, then Doppio itself does not enforce authentication, but CGI scripts may do so on their own.
+_Note: This feature replaces "secure directories" in earlier versions of Doppio._
 
-Doppio validates a client certificate used to authenticate a request only when authentication is required for the requested resource.
+A secure domain is a combination of:
 
-_This feature is very basic and may be expanded in the future._
+* a resource directory
+* an optional truststore
+
+Place resources (static or CGI) which should require client authentication in the directory of one of the configured secure domains. If a secure domain has a truststore, then Doppio authorizes client certificates against that truststore. So, the truststore may contain individual self-signed certificates, or the root certificate for trusted authorities, or both.
+
+If a secure domain has no truststore, then Doppio still requires client authentication, but accepts any client certificate.
+
+Doppio validates a client certificate (e.g., checks its valid date range) only when authentication is required for a requested resource.
+
+CGI scripts may roll their own client authentication and authorization code instead of relying on a secure domain.
+
+To add a certificate to a new or existing truststore, use the [example script](etc/add-to-truststore.sh) or `keytool` directly:
+
+```
+$ keytool -importcert -file trustedcert.pem -alias trustedcert \
+  -keystore domaints.jks
+```
 
 ## License
 

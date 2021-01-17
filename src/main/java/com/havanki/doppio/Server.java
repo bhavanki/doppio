@@ -35,7 +35,6 @@ import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -120,18 +119,10 @@ public class Server {
         KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
     kmf.init(keystore, serverProps.getKeystorePassword().toCharArray());
 
-    TrustManager[] trustManagers;
-    if (serverProps.getTruststore() != null) {
-      KeyStore truststore =
-          KeyStore.getInstance(serverProps.getTruststore().toFile(),
-                               serverProps.getTruststorePassword().toCharArray());
-      TrustManagerFactory tmf =
-          TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-      tmf.init(truststore);
-      trustManagers = tmf.getTrustManagers();
-    } else {
-      trustManagers = new TrustManager[0];
-    }
+    // Secure domains each control client authentication.
+    TrustManager[] trustManagers = new TrustManager[] {
+      new AllowAllTrustManager()
+    };
 
     sslContext.init(kmf.getKeyManagers(), trustManagers, null);
     return sslContext;

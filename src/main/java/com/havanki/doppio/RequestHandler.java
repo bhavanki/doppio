@@ -31,6 +31,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.net.URI;
+import java.security.cert.CertificateException;
 import java.security.cert.CertificateExpiredException;
 import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.X509Certificate;
@@ -53,6 +54,11 @@ public class RequestHandler implements Runnable {
 
   private static final int MAX_REQUEST_BYTES = 1026; // 1024 + CRLF
   private static final String CRLF = "\r\n";
+  // This is the "auth type" for TrustManager::checkClientTrusted. There is next
+  // to no information out there on what valid values for this are, except "RSA"
+  // being one. OpenJDK code seems to indicate that, for client trust, it
+  // actually doesn't matter (sun.security.validator.EndEntityChecker).
+  private static final String AUTH_TYPE = "whatever";
 
   private final ServerProperties serverProps;
   private final AccessLogger accessLogger;
@@ -163,23 +169,33 @@ public class RequestHandler implements Runnable {
         Path resourcePath = serverProps.getRoot().resolve(path);
         LOG.debug("Resolved path: {}", resourcePath);
 
-        // If the resource is in a secure directory, require authentication.
+        // If the resource is in a secure domain, require authentication.
         // Do this before checking if the resource exists so as not to leak
         // info.
         boolean isSecure = false;
-        for (Path secureDir : serverProps.getSecureDirs()) {
-          if (Path.of(path).startsWith(secureDir)) {
+        for (SecureDomain secureDomain : serverProps.getSecureDomains()) {
+          if (Path.of(path).startsWith(secureDomain.getDir())) {
             isSecure = true;
             if (peerCertificate == null) {
               statusCode = StatusCodes.CLIENT_CERTIFICATE_REQUIRED;
               writeResponseHeader(out, statusCode, "Authentication required");
               return;
             }
+            try {
+              X509Certificate[] chain = new X509Certificate[] {
+                peerCertificate
+              };
+              secureDomain.getTrustManager().checkClientTrusted(chain, AUTH_TYPE);
+            } catch (CertificateException e) {
+              statusCode = StatusCodes.CERTIFICATE_NOT_AUTHORISED;
+              writeResponseHeader(out, statusCode, "Authorization denied");
+              return;
+            }
             break;
           }
         }
 
-        // If the resource is in a secure directory, validate the peer
+        // If the resource is in a secure domain, validate the peer
         // certificate.
         if (isSecure) {
           try {
