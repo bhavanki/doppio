@@ -36,6 +36,26 @@ Finally, run the JAR.
 $ java -jar target/doppio-*.jar doppio.properties
 ```
 
+Doppio listens on two ports:
+
+* a server port for Gemini connections: configuration property `port`, default 1965
+* a control port for control commands: configuration property `controlPort`, default 31965
+
+Connections to the control port may only be made from the loopback address.
+
+## Control Commands
+
+A control command is a single line of text.
+
+* `shutdown`: gracefully shuts down the server
+
+An easy way to send control commands is with netcat.
+
+```
+$ nc localhost 31965
+shutdown
+```
+
 ## Static File Support
 
 Place static resources in the configured root directory. By default, resource content is streamed to clients exactly as it is in its resource. To force the conversion of line endings in text resources to canonical form (CRLF or "\r\n"), set the `forceCanonicalText` server property to `true`.

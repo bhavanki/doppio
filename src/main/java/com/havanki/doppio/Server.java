@@ -20,13 +20,17 @@
 package com.havanki.doppio;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.SocketException;
+import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
+import javax.net.ServerSocketFactory;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SNIHostName;
 import javax.net.ssl.SNIMatcher;
@@ -60,6 +64,7 @@ public class Server {
       Executors.newFixedThreadPool(serverProps.getNumThreads());
   }
 
+  private ServerSocket controlSocket;
   private ServerSocket serverSocket;
   private AccessLogger accessLogger;
 
@@ -67,9 +72,15 @@ public class Server {
    * Starts the server in the calling thread. This method exits when the server
    * is shutting down.
    *
-   * @throws Exception if the server fails to start
+   * @throws IOException if the server fails to start
+   * @throws GeneralSecurityException if there is a problem with establishing
+   *                                  TLS connectivity
    */
-  public void start() throws Exception {
+  public void start() throws IOException, GeneralSecurityException {
+    controlSocket = ServerSocketFactory.getDefault()
+      .createServerSocket(serverProps.getControlPort(), 0,
+                          InetAddress.getLoopbackAddress());
+
     SSLContext sslContext = buildSSLContext();
     serverSocket = sslContext.getServerSocketFactory()
       .createServerSocket(serverProps.getPort());
@@ -87,7 +98,12 @@ public class Server {
     sslParameters.setWantClientAuth(true);
     ((SSLServerSocket) serverSocket).setSSLParameters(sslParameters);
 
+    new Thread(new ControlRunnable(controlSocket, serverSocket),
+               "control").start();
+
+    LOG.info("Doppio {} started", Version.VERSION);
     LOG.info("Server listening on port {}", serverProps.getPort());
+    LOG.info("Control listening on port {}", serverProps.getControlPort());
     try {
       // Accept connections and hand them off to request handlers until there
       // is a SocketException, which should indicate that the server is
@@ -99,8 +115,18 @@ public class Server {
                                                   clientSocket));
       }
     } catch (SocketException e) {
-      LOG.error("Exception while accepting new connection", e);
+      LOG.info("Server socket closed, shutting down");
+      LOG.debug("Accept exception", e);
     } finally {
+      executorService.shutdown();
+      try {
+        executorService.awaitTermination(serverProps.getShutdownTimeoutSec(),
+                                         TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        LOG.debug("Interrupted while waiting for executor termination", e);
+      }
+      executorService.shutdownNow();
+
       try {
         accessLogger.close();
       } catch (IOException e) {
@@ -109,7 +135,8 @@ public class Server {
     }
   }
 
-  private SSLContext buildSSLContext() throws Exception {
+  private SSLContext buildSSLContext()
+    throws IOException, GeneralSecurityException {
     SSLContext sslContext = SSLContext.getInstance("TLS");
 
     KeyStore keystore =

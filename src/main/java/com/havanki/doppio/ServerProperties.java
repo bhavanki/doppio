@@ -36,6 +36,8 @@ public class ServerProperties {
 
   private static final Path DEFAULT_ROOT = Path.of("/var/gemini");
   private static final int DEFAULT_PORT = 1965;
+  private static final int DEFAULT_CONTROL_PORT = 31965;
+  private static final long DEFAULT_SHUTDOWN_TIMEOUT_SEC = 5;
   private static final int DEFAULT_NUM_THREADS = 4;
   private static final Path DEFAULT_CGI_DIR = null;
   private static final int DEFAULT_MAX_LOCAL_REDIRECTS = 10;
@@ -53,6 +55,8 @@ public class ServerProperties {
   private final Path root;
   private final String host;
   private final int port;
+  private final int controlPort;
+  private final long shutdownTimeoutSec;
   private final int numThreads;
   private final Path cgiDir;
   private final int maxLocalRedirects;
@@ -76,6 +80,9 @@ public class ServerProperties {
     root = getPathProperty(props, "root", DEFAULT_ROOT);
     host = props.getProperty("host");
     port = getIntProperty(props, "port", DEFAULT_PORT);
+    controlPort = getIntProperty(props, "controlPort", DEFAULT_CONTROL_PORT);
+    shutdownTimeoutSec = getLongProperty(props, "shutdownTimeoutSec",
+                                         DEFAULT_SHUTDOWN_TIMEOUT_SEC);
     numThreads = getIntProperty(props, "numThreads", DEFAULT_NUM_THREADS);
     cgiDir = getPathProperty(props, "cgiDir", DEFAULT_CGI_DIR);
     maxLocalRedirects = getIntProperty(props, "maxLocalRedirects",
@@ -138,6 +145,13 @@ public class ServerProperties {
     return Integer.parseInt(props.getProperty(key));
   }
 
+  private long getLongProperty(Properties props, String key, long defaultValue) {
+    if (!props.containsKey(key)) {
+      return defaultValue;
+    }
+    return Long.parseLong(props.getProperty(key));
+  }
+
   private boolean getBooleanProperty(Properties props, String key,
                                      boolean defaultValue) {
     if (!props.containsKey(key)) {
@@ -195,6 +209,24 @@ public class ServerProperties {
    */
   public int getPort() {
     return port;
+  }
+
+  /**
+   * Gets the control port for the server.
+   *
+   * @return control port
+   */
+  public int getControlPort() {
+    return controlPort;
+  }
+
+  /**
+   * Gets the shutdown timeout for the server, in seconds.
+   *
+   * @return shutdown timeout
+   */
+  public long getShutdownTimeoutSec() {
+    return shutdownTimeoutSec;
   }
 
   /**
