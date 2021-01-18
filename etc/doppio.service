@@ -36,6 +36,7 @@ ProtectControlGroups=true
 WorkingDirectory=/home/gemini/doppio
 
 ExecStart=/usr/bin/java -jar doppio.jar doppio.properties
+ExecStop=/bin/bash -c "/bin/nc localhost 31965 <<< shutdown; sleep 5"
 
 Restart=on-failure
 RestartSec=60s
