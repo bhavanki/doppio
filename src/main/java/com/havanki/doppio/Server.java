@@ -77,9 +77,14 @@ public class Server {
    *                                  TLS connectivity
    */
   public void start() throws IOException, GeneralSecurityException {
-    controlSocket = ServerSocketFactory.getDefault()
-      .createServerSocket(serverProps.getControlPort(), 0,
-                          InetAddress.getLoopbackAddress());
+    int controlPort = serverProps.getControlPort();
+    if (controlPort >= 0) {
+      controlSocket = ServerSocketFactory.getDefault()
+        .createServerSocket(controlPort, 0, InetAddress.getLoopbackAddress());
+    } else {
+      LOG.debug("Control socket disabled");
+      controlSocket = null;
+    }
 
     SSLContext sslContext = buildSSLContext();
     serverSocket = sslContext.getServerSocketFactory()
@@ -98,8 +103,9 @@ public class Server {
     sslParameters.setWantClientAuth(true);
     ((SSLServerSocket) serverSocket).setSSLParameters(sslParameters);
 
-    new Thread(new ControlRunnable(controlSocket, serverSocket),
-               "control").start();
+    if (controlSocket != null) {
+      new Thread(new ControlRunnable(controlSocket, this), "control").start();
+    }
 
     LOG.info("Doppio {} started", Version.VERSION);
     LOG.info("Server listening on port {}", serverProps.getPort());
@@ -159,11 +165,12 @@ public class Server {
    * Shuts down the server.
    */
   public void shutdown() {
-    executorService.shutdown();
+    // You can't interrupt a server socket blocked on accept; you have
+    // to just close it.
     try {
       serverSocket.close();
     } catch (IOException e) {
-      LOG.warn("Failed to close server socket", e);
+      LOG.debug("Failed to close server socket", e);
     }
   }
 }

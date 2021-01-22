@@ -44,7 +44,7 @@ public class ControlRunnable implements Runnable {
   public static final String COMMAND_SHUTDOWN = "shutdown";
 
   private final ServerSocket controlSocket;
-  private final ServerSocket serverSocket;
+  private final Server server;
 
   /**
    * Creates a new runnable.
@@ -52,9 +52,9 @@ public class ControlRunnable implements Runnable {
    * @param  controlSocket socket for control messages
    * @param  serverSocket  server socket
    */
-  public ControlRunnable(ServerSocket controlSocket, ServerSocket serverSocket) {
+  public ControlRunnable(ServerSocket controlSocket, Server server) {
     this.controlSocket = controlSocket;
-    this.serverSocket = serverSocket;
+    this.server = server;
   }
 
   @Override
@@ -78,13 +78,7 @@ public class ControlRunnable implements Runnable {
           case COMMAND_SHUTDOWN:
             LOG.info("Received shutdown command");
             shutdown = true;
-            // You can't interrupt a server socket blocked on accept; you have
-            // to just close it.
-            try {
-              serverSocket.close();
-            } catch (IOException e) {
-              LOG.debug("Failed to close server socket", e);
-            }
+            server.shutdown();
             break;
           default:
             LOG.error("Unknown control command {}", command);

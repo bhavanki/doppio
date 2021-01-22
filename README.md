@@ -41,7 +41,7 @@ Doppio listens on two ports:
 * a server port for Gemini connections: configuration property `port`, default 1965
 * a control port for control commands: configuration property `controlPort`, default 31965
 
-Connections to the control port may only be made from the loopback address.
+Connections to the control port may only be made from the loopback address. If the `controlPort` configuration property is set to -1, then Doppio does not open a control port.
 
 ## Control Commands
 
