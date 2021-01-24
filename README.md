@@ -16,10 +16,18 @@ The result is a shaded executable JAR.
 
 ## Running
 
-Gemini requires a server certificate, so generate one using keytool.
+Gemini requires a server certificate, so generate one using keytool. This example command generates an elliptic curve (EC) key and corresponding certificate.
 
 ```
 $ keytool -genkeypair -keystore doppio.jks -storepass doppio -keyalg EC
+```
+
+Alternatively, use openssl (again, this example generates an EC key).
+
+```
+$ openssl ecparam -genkey -name prime256v1 -out doppio.key
+$ openssl req -new -key doppio.key -x509 -out doppio.crt
+$ openssl pkcs12 -export -inkey doppio.key -in doppio.crt -out doppio.p12
 ```
 
 Use a common name that matches your hostname.
@@ -27,7 +35,7 @@ Use a common name that matches your hostname.
 Then, create a properties file. Use [doppio-example.properties](doppio-example.properties) as an example. Set the following properties:
 
 * `host` must match the name on the server certificate.
-* `keystore` must point to the server private key file.
+* `keystore` must point to the keystore (e.g., JKS or PKCS#12 file) containing the server's private key.
 * `keystorePassword` must contain the password for the keystore.
 
 Finally, run the JAR.
