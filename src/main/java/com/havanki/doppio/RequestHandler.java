@@ -211,6 +211,17 @@ public class RequestHandler implements Runnable {
           }
         }
 
+        // If the request is for a favicon, and a favicon is defined in the
+        // server configuration, handle it now.
+        if (serverProps.getFavicon() != null && path.equals("favicon.txt")) {
+          statusCode = StatusCodes.SUCCESS;
+          writeResponseHeader(out, statusCode, formatMeta("text/plain", null));
+          String faviconDoc = serverProps.getFavicon() + CRLF;
+          responseBodySize = writeString(out, faviconDoc);
+          out.flush(); // do not close, let try-with-resources handle it
+          return;
+        }
+
         // Determine if the resource is a CGI script.
         boolean isCgi = serverProps.getCgiDir() != null &&
           Path.of(path).startsWith(serverProps.getCgiDir());
@@ -474,5 +485,12 @@ public class RequestHandler implements Runnable {
   private long writeFile(OutputStream out, File resourceFile)
     throws IOException {
     return Files.copy(resourceFile.toPath(), out);
+  }
+
+  private long writeString(OutputStream out, String s)
+    throws IOException {
+    byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+    out.write(bytes);
+    return (long) bytes.length;
   }
 }

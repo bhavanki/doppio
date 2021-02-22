@@ -46,6 +46,7 @@ public class ServerProperties {
   private static final String DEFAULT_DEFAULT_CONTENT_TYPE = "text/plain";
   private static final boolean DEFAULT_ENABLE_CHARSET_DETECTION = false;
   private static final String DEFAULT_DEFAULT_CHARSET = null;
+  private static final String DEFAULT_FAVICON = null;
   private static final boolean DEFAULT_FORCE_CANONICAL_TEXT = false;
   private static final Path DEFAULT_LOG_DIR = null;
   private static final Path DEFAULT_KEYSTORE = Path.of("/etc/doppio/keystore.jks");
@@ -65,6 +66,7 @@ public class ServerProperties {
   private final String defaultContentType;
   private final boolean enableCharsetDetection;
   private final String defaultCharset;
+  private final String favicon;
   private final Path logDir;
   private final List<SecureDomain> secureDomains;
   private final Path keystore;
@@ -97,6 +99,13 @@ public class ServerProperties {
                                                 DEFAULT_ENABLE_CHARSET_DETECTION);
     defaultCharset = props.getProperty("defaultCharset",
                                        DEFAULT_DEFAULT_CHARSET);
+    favicon = props.getProperty("favicon", DEFAULT_FAVICON);
+    // Counting emoji in Java just ain't reliable
+    // https://lemire.me/blog/2018/06/15/emojis-java-and-strings/
+    // if (favicon != null && favicon.codePointCount(0, favicon.length()) != 1) {
+    //   throw new IllegalStateException("Favicon must be exactly one character, " +
+    //                                   "found " + favicon.codePointCount(0, favicon.length()));
+    // }
     logDir = getPathProperty(props, "logDir", DEFAULT_LOG_DIR);
     keystore = getPathProperty(props, "keystore", DEFAULT_KEYSTORE);
     keystorePassword = props.getProperty("keystorePassword",
@@ -291,6 +300,15 @@ public class ServerProperties {
    */
   public String getDefaultCharset() {
     return defaultCharset;
+  }
+
+  /**
+   * Gets the site favicon.
+   *
+   * @return favicon
+   */
+  public String getFavicon() {
+    return favicon;
   }
 
   /**

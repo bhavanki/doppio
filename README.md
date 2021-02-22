@@ -77,6 +77,10 @@ Charset for text resources is optionally detected using [juniversalchardet](http
 
 When a directory is requested, Doppio looks for an index file, ending with any supported filename suffix for text/gemini files (e.g., _index.gmi_), and returns the first one it finds. Otherwise, it returns a 51 (not found) response.
 
+## Favicon Support
+
+Set the `favicon` server property to an emoji to configure a favicon. Doppio then serves a favicon document in accordance with the [favicon RFC](gemini://mozz.us/files/rfc_gemini_favicon.gmi). If the property is not set, a literal favicon document may still be created at and served from _/favicon.txt_.
+
 ## CGI Support
 
 Place CGI scripts in the configured CGI directory. If no directory is configured, Doppio does not run scripts, even if they reside in a directory that seems like a valid CGI directory (e.g., some "cgi-bin" directory).
