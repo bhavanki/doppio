@@ -2,7 +2,15 @@
 
 ## v0.5.0
 
-*unreleased*
+### Added
+
+* The server now listens on an optional local TCP "control" port for shutdown messages, which enables graceful shutdown.
+* A site favicon may be set through a server configuration property.
+* The principal name in the certificate of a request authenticated by the server is now logged in the access log.
+
+### Fixed
+
+* The access log now delimits timestamps with square brackets, as called for in the Apache Common Log Format, instead of parentheses.
 
 ## v0.4.0
 
