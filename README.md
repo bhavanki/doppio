@@ -64,6 +64,13 @@ $ nc localhost 31965
 shutdown
 ```
 
+## Access Log
+
+A log directory may be configured with the `logDir` configuration property. When the property is set, Doppio writes an access log to a file "access.log" in that directory. The log follows the [Apache Common Log Format (CLF)](https://httpd.apache.org/docs/1.3/logs.html#common), with the following minor caveats.
+
+* The second field in each line, the RFC 1413 client identity, is never provided.
+* The remote user is the subject DN of the client's authenticated certificate. The value is URL-encoded, primarily to avoid spaces in the logged value.
+
 ## Static File Support
 
 Place static resources in the configured root directory. By default, resource content is streamed to clients exactly as it is in its resource. To force the conversion of line endings in text resources to canonical form (CRLF or "\r\n"), set the `forceCanonicalText` server property to `true`.
@@ -179,7 +186,7 @@ If a secure domain has no truststore, then Doppio still requires client authenti
 
 Doppio validates a client certificate (e.g., checks its valid date range) only when authentication is required for a requested resource.
 
-CGI scripts may roll their own client authentication and authorization code instead of relying on a secure domain.
+CGI scripts may roll their own client authentication and authorization code instead of relying on a secure domain. In this case, however, the remote user is not available in the access log for a request, since Doppio is not performing the authentication itself.
 
 To add a certificate to a new or existing truststore, use the [example script](etc/add-to-truststore.sh) or `keytool` directly:
 
