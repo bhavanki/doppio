@@ -25,6 +25,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -88,17 +89,19 @@ public class AccessLogger implements Closeable {
    * Logs a successful access.
    *
    * @param socket           request socket
+   * @param remoteUsername   remote username, if authenticated
    * @param request          request text
    * @param statusCode       response status code
    * @param responseBodySize the size of the response body, in bytes
    */
-  public void log(Socket socket, String request, int statusCode,
-                  long responseBodySize) {
-    log(socket, request, statusCode, responseBodySize, Instant.now());
+  public void log(Socket socket, String remoteUsername, String request,
+                  int statusCode, long responseBodySize) {
+    log(socket, remoteUsername, request, statusCode, responseBodySize,
+        Instant.now());
   }
 
-  synchronized void log(Socket socket, String request, int statusCode,
-                        long responseBodySize, Instant timestamp) {
+  synchronized void log(Socket socket, String remoteUsername, String request,
+                        int statusCode, long responseBodySize, Instant timestamp) {
     if (closed) {
       throw new IllegalStateException("Logger is closed");
     }
@@ -114,8 +117,11 @@ public class AccessLogger implements Closeable {
     } else {
       remoteAddress = "-";
     }
-    // remote username not yet implemented
-    String remoteUsername = "-";
+    if (remoteUsername == null) {
+      remoteUsername = "-";
+    } else {
+      remoteUsername = URLEncoder.encode(remoteUsername, StandardCharsets.UTF_8);
+    }
     String timestampStr = ACCESS_LOG_DATE_TIME_FORMATTER.format(timestamp);
 
     String line = String.format(ACCESS_LOG_FORMAT, remoteAddress,

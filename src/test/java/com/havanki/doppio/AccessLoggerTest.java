@@ -60,11 +60,13 @@ public class AccessLoggerTest {
 
   @Test
   public void testLog() throws Exception {
+    String remoteUsername = "bob";
     String request = "request";
     int statusCode = 20;
     long responseBodySize = 100L;
 
-    accessLogger.log(socket, request, statusCode, responseBodySize, timestamp);
+    accessLogger.log(socket, remoteUsername, request, statusCode,
+                     responseBodySize, timestamp);
     accessLogger.close();
 
     try (FileReader fr = new FileReader(logDir.resolve("access.log").toFile(),
@@ -75,7 +77,7 @@ public class AccessLoggerTest {
       System.out.println(line);
       String timestampStr = AccessLogger.ACCESS_LOG_DATE_TIME_FORMATTER
         .format(timestamp);
-      assertEquals("gemini-client.example.com - - [" + timestampStr +
+      assertEquals("gemini-client.example.com - bob [" + timestampStr +
                    "] \"request\" 20 100", line);
     }
   }

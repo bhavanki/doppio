@@ -93,6 +93,7 @@ public class RequestHandler implements Runnable {
   public void run() {
     String request = null;
     int statusCode = StatusCodes.PERMANENT_FAILURE;
+    String remoteUsername = null;
     long responseBodySize = 0;
 
     // Check for a valid session / successful handshake.
@@ -209,6 +210,9 @@ public class RequestHandler implements Runnable {
             writeResponseHeader(out, statusCode, "Certificate is not yet valid");
             return;
           }
+
+          // Save the remote username for access logging.
+          remoteUsername = peerCertificate.getSubjectX500Principal().getName();
         }
 
         // If the request is for a favicon, and a favicon is defined in the
@@ -427,7 +431,8 @@ public class RequestHandler implements Runnable {
       if (request == null) {
         request = "?";
       }
-      accessLogger.log(socket, request, statusCode, responseBodySize);
+      accessLogger.log(socket, remoteUsername, request, statusCode,
+                       responseBodySize);
     }
   }
 
