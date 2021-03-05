@@ -199,4 +199,4 @@ $ keytool -importcert -file trustedcert.pem -alias trustedcert \
 
 [GNU Affero General Public License v3](LICENSE)
 
-The [example systemd service file](etc/doppio.service) is separately available under the [MIT License](https://opensource.org/licenses/MIT).
+The [example systemd service file](etc/doppio.service) and [example truststore script](etc/add-to-truststore.sh) are separately available under the [MIT License](https://opensource.org/licenses/MIT).
