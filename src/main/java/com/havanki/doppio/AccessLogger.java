@@ -79,9 +79,9 @@ public class AccessLogger implements Closeable {
   }
 
   private static final String ACCESS_LOG_FORMAT =
-    "%s - %s %s \"%s\" %d %d\r\n";
-  private static final DateTimeFormatter ACCESS_LOG_DATE_TIME_FORMATTER =
-    DateTimeFormatter.ofPattern("(dd/MMM/yyyy:HH:mm:ss Z)")
+    "%s - %s [%s] \"%s\" %d %d\r\n";
+  static final DateTimeFormatter ACCESS_LOG_DATE_TIME_FORMATTER =
+    DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss Z")
       .withZone(ZoneId.systemDefault());
 
   /**
@@ -92,8 +92,13 @@ public class AccessLogger implements Closeable {
    * @param statusCode       response status code
    * @param responseBodySize the size of the response body, in bytes
    */
-  public synchronized void log(Socket socket, String request, int statusCode,
-                               long responseBodySize) {
+  public void log(Socket socket, String request, int statusCode,
+                  long responseBodySize) {
+    log(socket, request, statusCode, responseBodySize, Instant.now());
+  }
+
+  synchronized void log(Socket socket, String request, int statusCode,
+                        long responseBodySize, Instant timestamp) {
     if (closed) {
       throw new IllegalStateException("Logger is closed");
     }
@@ -111,10 +116,10 @@ public class AccessLogger implements Closeable {
     }
     // remote username not yet implemented
     String remoteUsername = "-";
-    String timestamp = ACCESS_LOG_DATE_TIME_FORMATTER.format(Instant.now());
+    String timestampStr = ACCESS_LOG_DATE_TIME_FORMATTER.format(timestamp);
 
     String line = String.format(ACCESS_LOG_FORMAT, remoteAddress,
-                                remoteUsername, timestamp, request,
+                                remoteUsername, timestampStr, request,
                                 statusCode, responseBodySize);
 
     try {
