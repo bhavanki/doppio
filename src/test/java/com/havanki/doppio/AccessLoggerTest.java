@@ -21,6 +21,7 @@ package com.havanki.doppio;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -69,16 +70,35 @@ public class AccessLoggerTest {
                      responseBodySize, timestamp);
     accessLogger.close();
 
+    String line = getLogLine();
+    String timestampStr = AccessLogger.ACCESS_LOG_DATE_TIME_FORMATTER
+      .format(timestamp);
+    assertEquals("gemini-client.example.com - bob [" + timestampStr +
+                 "] \"request\" 20 100", line);
+  }
+
+  @Test
+  public void testLogNoContent() throws Exception {
+    String remoteUsername = "bob";
+    String request = "request";
+    int statusCode = 51;
+    long responseBodySize = 0L;
+
+    accessLogger.log(socket, remoteUsername, request, statusCode,
+                     responseBodySize, timestamp);
+    accessLogger.close();
+
+    String line = getLogLine();
+    assertTrue(line.endsWith(" \"request\" 51 -"));
+  }
+
+  private String getLogLine() throws Exception {
     try (FileReader fr = new FileReader(logDir.resolve("access.log").toFile(),
                                         StandardCharsets.UTF_8);
          BufferedReader br = new BufferedReader(fr)) {
       String line = br.readLine();
       assertNotNull(line);
-      System.out.println(line);
-      String timestampStr = AccessLogger.ACCESS_LOG_DATE_TIME_FORMATTER
-        .format(timestamp);
-      assertEquals("gemini-client.example.com - bob [" + timestampStr +
-                   "] \"request\" 20 100", line);
+      return line;
     }
   }
 

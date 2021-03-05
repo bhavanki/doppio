@@ -11,6 +11,7 @@
 ### Fixed
 
 * The access log now delimits timestamps with square brackets, as called for in the Apache Common Log Format, instead of parentheses.
+* The access log now logs a zero-length response body with a hyphen instead of a zero.
 
 ## v0.4.0
 

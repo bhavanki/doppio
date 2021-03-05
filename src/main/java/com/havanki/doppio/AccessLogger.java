@@ -80,7 +80,7 @@ public class AccessLogger implements Closeable {
   }
 
   private static final String ACCESS_LOG_FORMAT =
-    "%s - %s [%s] \"%s\" %d %d\r\n";
+    "%s - %s [%s] \"%s\" %d %s\r\n";
   static final DateTimeFormatter ACCESS_LOG_DATE_TIME_FORMATTER =
     DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss Z")
       .withZone(ZoneId.systemDefault());
@@ -123,10 +123,12 @@ public class AccessLogger implements Closeable {
       remoteUsername = URLEncoder.encode(remoteUsername, StandardCharsets.UTF_8);
     }
     String timestampStr = ACCESS_LOG_DATE_TIME_FORMATTER.format(timestamp);
+    String responseBodySizeStr = responseBodySize > 0L ?
+      Long.toString(responseBodySize) : "-";
 
     String line = String.format(ACCESS_LOG_FORMAT, remoteAddress,
                                 remoteUsername, timestampStr, request,
-                                statusCode, responseBodySize);
+                                statusCode, responseBodySizeStr);
 
     try {
       accessLogWriter.write(line);
