@@ -195,6 +195,21 @@ $ keytool -importcert -file trustedcert.pem -alias trustedcert \
   -keystore domaints.jks
 ```
 
+## Automatic Atom Feed Generation
+
+Doppio can automatically generate an [Atom feed](https://en.wikipedia.org/wiki/Atom_(Web_standard)) for Gemini index pages that follow the [Subscribing to Gemini pages](gemini://gemini.circumlunar.space/docs/companion/subscription.gmi) specification. Enable this for pages by listing their paths relative to the server root in the `feedPages` server property.
+
+```
+feedPages=gemlog/index.gmi,gemlog2/index.gmi
+```
+
+When Doppio receives a request for an "atom.xml" file in a directory that matches a feed page, it returns the generated feed content.
+
+* Requests for the feed page itself still work.
+* Only one feed per directory is supported. If there are multiple feed pages listed for a single directory, the first one listed wins.
+* Automatic feed generation for CGI is not supported.
+* A feed page must use the UTF-8 charset.
+
 ## License
 
 [GNU Affero General Public License v3](LICENSE)

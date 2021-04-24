@@ -7,6 +7,7 @@
 * The server now listens on an optional local TCP "control" port for shutdown messages, which enables graceful shutdown.
 * A site favicon may be set through a server configuration property.
 * The principal name in the certificate of a request authenticated by the server is now logged in the access log.
+* Atom feeds may be automatically generated for gemlog-style index pages.
 
 ### Fixed
 

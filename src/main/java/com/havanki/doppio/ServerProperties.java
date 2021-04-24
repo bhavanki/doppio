@@ -47,6 +47,7 @@ public class ServerProperties {
   private static final boolean DEFAULT_ENABLE_CHARSET_DETECTION = false;
   private static final String DEFAULT_DEFAULT_CHARSET = null;
   private static final String DEFAULT_FAVICON = null;
+  private static final List<String> DEFAULT_FEED_PAGES = List.of();
   private static final boolean DEFAULT_FORCE_CANONICAL_TEXT = false;
   private static final Path DEFAULT_LOG_DIR = null;
   private static final Path DEFAULT_KEYSTORE = Path.of("/etc/doppio/keystore.jks");
@@ -67,6 +68,7 @@ public class ServerProperties {
   private final boolean enableCharsetDetection;
   private final String defaultCharset;
   private final String favicon;
+  private final List<String> feedPages;
   private final Path logDir;
   private final List<SecureDomain> secureDomains;
   private final Path keystore;
@@ -106,6 +108,7 @@ public class ServerProperties {
     //   throw new IllegalStateException("Favicon must be exactly one character, " +
     //                                   "found " + favicon.codePointCount(0, favicon.length()));
     // }
+    feedPages = getStringListProperty(props, "feedPages", DEFAULT_FEED_PAGES);
     logDir = getPathProperty(props, "logDir", DEFAULT_LOG_DIR);
     keystore = getPathProperty(props, "keystore", DEFAULT_KEYSTORE);
     keystorePassword = props.getProperty("keystorePassword",
@@ -309,6 +312,15 @@ public class ServerProperties {
    */
   public String getFavicon() {
     return favicon;
+  }
+
+  /**
+   * Gets the paths to the feed pages.
+   *
+   * @return feed pages
+   */
+  public List<String> getFeedPages() {
+    return feedPages;
   }
 
   /**

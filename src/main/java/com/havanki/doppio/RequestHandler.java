@@ -35,6 +35,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateExpiredException;
 import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.X509Certificate;
+import java.util.Objects;
 import java.util.Optional;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
@@ -54,6 +55,8 @@ public class RequestHandler implements Runnable {
 
   private static final int MAX_REQUEST_BYTES = 1026; // 1024 + CRLF
   private static final String CRLF = "\r\n";
+  private static final String ATOM_FEED_FILE_NAME = "atom.xml";
+  private static final String ATOM_FEED_META = "text/xml;charset=utf-8";
   // This is the "auth type" for TrustManager::checkClientTrusted. There is next
   // to no information out there on what valid values for this are, except "RSA"
   // being one. OpenJDK code seems to indicate that, for client trust, it
@@ -64,6 +67,7 @@ public class RequestHandler implements Runnable {
   private final AccessLogger accessLogger;
   private final SSLSocket socket;
   private final RequestParser requestParser;
+  private final Atomizer atomizer;
   private final ContentTypeResolver contentTypeResolver;
   private final CharsetDetector charsetDetector;
 
@@ -82,6 +86,7 @@ public class RequestHandler implements Runnable {
     this.socket = socket;
 
     requestParser = new RequestParser(serverProps.getHost(), serverProps.getPort());
+    atomizer = new Atomizer();
     contentTypeResolver =
       new ContentTypeResolver(serverProps.getTextGeminiSuffixes(),
                               serverProps.getDefaultContentType());
@@ -146,6 +151,9 @@ public class RequestHandler implements Runnable {
         return;
       }
 
+      // Expect not to have to atomize (generate an Atom feed for) the resource.
+      boolean atomize = false;
+
       // Loop handling requests until there is no longer a local redirect, or
       // the maximum number of local redirects has been exceeded.
       File resourceFile = null;
@@ -157,25 +165,26 @@ public class RequestHandler implements Runnable {
 
         // Pull the path out of the URI and find the matching path in the root
         // directory of the server.
-        String path = uri.getPath();
-        LOG.debug("Path requested: {}", path);
-        if (path.startsWith("/..") || path.startsWith("..")) {
+        String pathString = uri.getPath();
+        LOG.debug("Path requested: {}", pathString);
+        if (pathString.startsWith("/..") || pathString.startsWith("..")) {
           statusCode = StatusCodes.BAD_REQUEST;
           writeResponseHeader(out, statusCode, "Illegal path in URI");
           return;
         }
-        if (path.length() > 0 && path.charAt(0) == '/') {
-          path = path.substring(1);
+        if (pathString.length() > 0 && pathString.charAt(0) == '/') {
+          pathString = pathString.substring(1);
         }
-        Path resourcePath = serverProps.getRoot().resolve(path);
+        Path resourcePath = serverProps.getRoot().resolve(pathString);
         LOG.debug("Resolved path: {}", resourcePath);
+        Path path = Path.of(pathString);
 
         // If the resource is in a secure domain, require authentication.
         // Do this before checking if the resource exists so as not to leak
         // info.
         boolean isSecure = false;
         for (SecureDomain secureDomain : serverProps.getSecureDomains()) {
-          if (Path.of(path).startsWith(secureDomain.getDir())) {
+          if (path.startsWith(secureDomain.getDir())) {
             isSecure = true;
             if (peerCertificate == null) {
               statusCode = StatusCodes.CLIENT_CERTIFICATE_REQUIRED;
@@ -217,7 +226,7 @@ public class RequestHandler implements Runnable {
 
         // If the request is for a favicon, and a favicon is defined in the
         // server configuration, handle it now.
-        if (serverProps.getFavicon() != null && path.equals("favicon.txt")) {
+        if (serverProps.getFavicon() != null && pathString.equals("favicon.txt")) {
           statusCode = StatusCodes.SUCCESS;
           writeResponseHeader(out, statusCode, formatMeta("text/plain", null));
           String faviconDoc = serverProps.getFavicon() + CRLF;
@@ -228,8 +237,26 @@ public class RequestHandler implements Runnable {
 
         // Determine if the resource is a CGI script.
         boolean isCgi = serverProps.getCgiDir() != null &&
-          Path.of(path).startsWith(serverProps.getCgiDir());
+          path.startsWith(serverProps.getCgiDir());
         LOG.debug("CGI? {}", isCgi);
+
+        // If the request is for an Atom feed, and atomization is configured for
+        // its directory, then switch over to fetching the feed page in that
+        // directory.
+        // For simplicity, automatic feeds are not supported for CGI.
+        if (path.endsWith(Path.of(ATOM_FEED_FILE_NAME)) && !isCgi) {
+          Path pathParent = path.getParent();
+          Optional<String> feedPage = serverProps.getFeedPages().stream()
+            .filter(p -> Objects.equals(Path.of(p).getParent(), pathParent))
+            .findFirst();
+          if (feedPage.isPresent()) {
+            LOG.debug("Using generated feed for {}", feedPage.get());
+            resourcePath = serverProps.getRoot().resolve(feedPage.get());
+            LOG.debug("Re-resolved path: {}", resourcePath);
+            path = Path.of(pathString);
+            atomize = true;
+          }
+        }
 
         // Locate the resource, finding the path to it and any extra path
         // information.
@@ -391,27 +418,43 @@ public class RequestHandler implements Runnable {
         }
       }
 
-      // Find the file's content type for the response header.
-      String fileName = resourceFile.getName();
-      String contentType = contentTypeResolver.getContentTypeFor(fileName);
-      LOG.debug("Detected content type: {}", contentType);
+      if (atomize) {
 
-      // Detect the file's charset.
-      String detectedCharset = contentType.startsWith("text/") &&
-        serverProps.isEnableCharsetDetection() ?
-        charsetDetector.detect(resourceFile) : null;
-      LOG.debug("Detected charset: {}", detectedCharset);
+        // If the file needs to be atomized, generate its feed content and emit
+        // it as UTF-8 XML.
+        String feedPathString = uri.toString().replace("/" + ATOM_FEED_FILE_NAME, "");
+        String fileContent = Files.readString(resourceFile.toPath(), StandardCharsets.UTF_8);
+        String feedContent = atomizer.atomize(feedPathString, fileContent);
 
-      // Write out a SUCCESS response header and then the file contents as
-      // the response body.
-      statusCode = StatusCodes.SUCCESS;
-      writeResponseHeader(out, statusCode, formatMeta(contentType, detectedCharset));
-      if (serverProps.isForceCanonicalText() && contentType.startsWith("text/")) {
-        OutputStream bodyOut = new LineEndingConvertingOutputStream(out);
-        responseBodySize = writeFile(bodyOut, resourceFile);
-        bodyOut.flush(); // do not close, let try-with-resources handle it
+        statusCode = StatusCodes.SUCCESS;
+        writeResponseHeader(out, statusCode, ATOM_FEED_META);
+        writeString(out, feedContent);
+
       } else {
-        responseBodySize = writeFile(out, resourceFile);
+
+        // Find the file's content type for the response header.
+        String fileName = resourceFile.getName();
+        String contentType = contentTypeResolver.getContentTypeFor(fileName);
+        LOG.debug("Detected content type: {}", contentType);
+
+        // Detect the file's charset.
+        String detectedCharset = contentType.startsWith("text/") &&
+          serverProps.isEnableCharsetDetection() ?
+          charsetDetector.detect(resourceFile) : null;
+        LOG.debug("Detected charset: {}", detectedCharset);
+
+        // Write out a SUCCESS response header and then the file contents as
+        // the response body.
+        statusCode = StatusCodes.SUCCESS;
+        writeResponseHeader(out, statusCode, formatMeta(contentType, detectedCharset));
+        if (serverProps.isForceCanonicalText() && contentType.startsWith("text/")) {
+          OutputStream bodyOut = new LineEndingConvertingOutputStream(out);
+          responseBodySize = writeFile(bodyOut, resourceFile);
+          bodyOut.flush(); // do not close, let try-with-resources handle it
+        } else {
+          responseBodySize = writeFile(out, resourceFile);
+        }
+
       }
     } catch (IOException e) {
       LOG.error("Failed to handle request", e);
