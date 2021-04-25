@@ -22,6 +22,7 @@ package com.havanki.doppio;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.StringReader;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,6 +59,8 @@ public class ServerPropertiesTest {
   private static final String FAVICON = "🗑";
   private static final List<String> FEED_PAGES = List.of("testgemlog.gmi");
   private static final String LOG_DIR = "/var/log/doppio";
+  private static final List<SecureDomain> SECURE_DOMAINS =
+    List.of(new SecureDomain(Path.of("/path1")));
   private static final String KEYSTORE =
     ServerProperties.DEFAULT_KEYSTORE.toString() + ".test";
   private static final String KEYSTORE_PASSWORD =
@@ -73,12 +76,27 @@ public class ServerPropertiesTest {
     props = new Properties();
   }
 
+  private static final String MINIMAL_YAML = "host: " + HOST;
+
+  @Test
+  public void testMinimalYaml() throws Exception {
+    try (StringReader sr = new StringReader(MINIMAL_YAML)) {
+      sp = new ServerProperties(sr);
+    }
+
+    assertMinimal();
+  }
+
   @Test
   public void testMinimal() {
     props.setProperty("host", HOST);
 
     sp = new ServerProperties(props);
 
+    assertMinimal();
+  }
+
+  private void assertMinimal() {
     assertEquals(HOST, sp.getHost());
 
     assertEquals(ServerProperties.DEFAULT_ROOT, sp.getRoot());
@@ -112,6 +130,44 @@ public class ServerPropertiesTest {
                  sp.isSetModSslCgiMetaVars());
   }
 
+  private static final String MAXIMAL_YAML =
+    "root: " + ROOT +
+    "\nhost: " + HOST +
+    "\nport: " + Integer.toString(PORT) +
+    "\ncontrolPort: " + Integer.toString(CONTROL_PORT) +
+    "\nshutdownTimeoutSec: " + Long.toString(SHUTDOWN_TIMEOUT_SEC) +
+    "\nnumThreads: " + Integer.toString(NUM_THREADS) +
+    "\ncgiDir: " + CGI_DIR +
+    "\nmaxLocalRedirects: " + Integer.toString(MAX_LOCAL_REDIRECTS) +
+    "\nforceCanonicalText: " + Boolean.toString(FORCE_CANONICAL_TEXT) +
+    "\ntextGeminiSuffixes:" +
+    TEXT_GEMINI_SUFFIXES.stream()
+        .map(s -> "\n- " + s)
+        .collect(Collectors.joining()) +
+    "\ndefaultContentType: " + DEFAULT_CONTENT_TYPE +
+    "\nenableCharsetDetection: " + Boolean.toString(ENABLE_CHARSET_DETECTION) +
+    "\ndefaultCharset: " + DEFAULT_CHARSET +
+    "\nfavicon: " + FAVICON +
+    "\nfeedPages:" +
+    FEED_PAGES.stream()
+        .map(s -> "\n- " + s)
+        .collect(Collectors.joining()) +
+    "\nlogDir: " + LOG_DIR +
+    "\nsecureDomains:" +
+    "\n  /path1: {}" +
+    "\nkeystore: " + KEYSTORE +
+    "\nkeystorePassword: " + KEYSTORE_PASSWORD +
+    "\nsetModSslCgiMetaVars: " + Boolean.toString(SET_MOD_SSL_CGI_META_VARS);
+
+  @Test
+  public void testMaximalYaml() throws Exception {
+    try (StringReader sr = new StringReader(MAXIMAL_YAML)) {
+      sp = new ServerProperties(sr);
+    }
+
+    assertMaximal();
+  }
+
   @Test
   public void testMaximal() {
     props.setProperty("root", ROOT);
@@ -137,6 +193,7 @@ public class ServerPropertiesTest {
     props.setProperty("feedPages",
                       FEED_PAGES.stream().collect(Collectors.joining(",")));
     props.setProperty("logDir", LOG_DIR);
+    props.setProperty("secureDomain.1", "/path1");
     props.setProperty("keystore", KEYSTORE);
     props.setProperty("keystorePassword", KEYSTORE_PASSWORD);
     props.setProperty("setModSslCgiMetaVars",
@@ -144,6 +201,10 @@ public class ServerPropertiesTest {
 
     sp = new ServerProperties(props);
 
+    assertMaximal();
+  }
+
+  private void assertMaximal() {
     assertEquals(Path.of(ROOT), sp.getRoot());
     assertEquals(HOST, sp.getHost());
     assertEquals(PORT, sp.getPort());
@@ -163,6 +224,9 @@ public class ServerPropertiesTest {
     assertEquals(Path.of(KEYSTORE), sp.getKeystore());
     assertEquals(KEYSTORE_PASSWORD, sp.getKeystorePassword());
     assertEquals(SET_MOD_SSL_CGI_META_VARS, sp.isSetModSslCgiMetaVars());
+
+    assertEquals(1, sp.getSecureDomains().size());
+    assertEquals("/path1", sp.getSecureDomains().get(0).getDir().toString());
   }
 
   @Test

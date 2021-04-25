@@ -4,6 +4,10 @@
 
 *unreleased*
 
+## Added
+
+* The server configuration may now be supplied in a YAML file as an alternative to Java properties.
+
 ## v0.5.0
 
 *2021-04-24*

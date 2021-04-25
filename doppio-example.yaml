@@ -1,0 +1,87 @@
+# Copyright (C) 2021 Bill Havanki
+#
+# This file is part of Doppio.
+#
+# Doppio is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+# Example properties file for Doppio
+
+# The root directory for static files.
+root: /var/gemini
+
+# The host for the server, which must match the one used for the
+# server certificate. (required)
+host: gemini.example.com
+
+# The server port.
+port: 1965
+
+# The control port. Set to -1 to disable.
+controlPort: 31965
+
+# The timeout, in seconds, to wait for the server to complete work before it
+# shuts down.
+shutdownTimeoutSec: 5
+
+# The number of server threads.
+numThreads: 4
+
+# The CGI directory for scripts.
+cgiDir: /var/gemini/cgi-bin
+
+# The maximum number of local CGI redirects to permit.
+maxLocalRedirects: 10
+
+# Whether to force text in response bodies to use canonical (DOS) line endings.
+forceCanonicalText: false
+
+# Suffixes for resources (files) with content type text/gemini.
+textGeminiSuffixes:
+  - .gmi
+  - .gemini
+
+# The default content type for a resource, when detection fails.
+defaultContentType: text/plain
+
+# Whether to enable charset detection for static text resources.
+enableCharsetDetection: false
+
+# The default charset for text resources, when detection fails.
+defaultCharset: UTF-8
+
+# The server favicon.
+favicon: ☕️
+
+# Pages that should have Atom feeds generated for them.
+feedPages:
+  - gemlog.gmi
+  - mygemlog/index.gmi
+
+# The log directory for the access log.
+logDir: /var/log/doppio
+
+# Secure domains where authentication is required.
+secureDomains:
+  /var/gemini/secure:
+    truststore: /etc/doppio/truststore.jks
+    truststorePassword: doppio
+  /var/gemini/secure2:
+    truststore: /etc/doppio/truststore2.jks
+    truststorePassword: doppio
+
+# The keystore containing the server's private key.
+keystore: /etc/doppio/keystore.jks
+
+# The password for the keystore.
+keystorePassword: doppio

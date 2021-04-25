@@ -32,7 +32,7 @@ $ openssl pkcs12 -export -inkey doppio.key -in doppio.crt -out doppio.p12
 
 Use a common name that matches your hostname.
 
-Then, create a properties file. Use [doppio-example.properties](doppio-example.properties) as an example. Set the following properties:
+Then, create a server properties file. Use [doppio-example.yaml](doppio-example.yaml) or [doppio-example.properties](doppio-example.properties) as an example. Set the following properties:
 
 * `host` must match the name on the server certificate.
 * `keystore` must point to the keystore (e.g., JKS or PKCS#12 file) containing the server's private key.
@@ -41,7 +41,7 @@ Then, create a properties file. Use [doppio-example.properties](doppio-example.p
 Finally, run the JAR.
 
 ```
-$ java -jar target/doppio-*.jar doppio.properties
+$ java -jar target/doppio-*.jar doppio.yaml
 ```
 
 Doppio listens on two ports:
@@ -197,10 +197,12 @@ $ keytool -importcert -file trustedcert.pem -alias trustedcert \
 
 ## Automatic Atom Feed Generation
 
-Doppio can automatically generate an [Atom feed](https://en.wikipedia.org/wiki/Atom_(Web_standard)) for Gemini index pages that follow the [Subscribing to Gemini pages](gemini://gemini.circumlunar.space/docs/companion/subscription.gmi) specification. Enable this for pages by listing their paths relative to the server root in the `feedPages` server property.
+Doppio can automatically generate an [Atom feed](https://en.wikipedia.org/wiki/Atom_(Web_standard)) for Gemini index pages that follow the [Subscribing to Gemini pages](gemini://gemini.circumlunar.space/docs/companion/subscription.gmi) specification. Enable this for pages by listing their paths relative to the server root in the `feedPages` configuration property.
 
-```
-feedPages=gemlog/index.gmi,gemlog2/index.gmi
+```yaml
+feedPages:
+  - gemlog/index.gmi
+  - gemlog2/index.gmi
 ```
 
 When Doppio receives a request for an "atom.xml" file in a directory that matches a feed page, it returns the generated feed content.

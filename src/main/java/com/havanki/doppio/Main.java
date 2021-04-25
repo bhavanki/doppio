@@ -36,12 +36,18 @@ public class Main {
    *                   the server fails to start
    */
   public static void main(String[] args) throws Exception {
-    Properties props = new Properties();
-    try (FileReader r = new FileReader(args[0])) {
-      props.load(r);
+    String serverPropsFile = args[0];
+    ServerProperties serverProps;
+    try (FileReader r = new FileReader(serverPropsFile)) {
+      if (serverPropsFile.endsWith(".yaml")) {
+        serverProps = new ServerProperties(r);
+      } else {
+        Properties props = new Properties();
+        props.load(r);
+        serverProps = new ServerProperties(props);
+      }
     }
-
-    Server server = new Server(new ServerProperties(props));
+    Server server = new Server(serverProps);
     server.start();
   }
 }

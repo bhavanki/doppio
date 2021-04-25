@@ -20,18 +20,24 @@
 package com.havanki.doppio;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
+
+import org.snakeyaml.engine.v2.api.Load;
+import org.snakeyaml.engine.v2.api.LoadSettings;
 
 /**
  * Server configuration properties.
  */
+@SuppressWarnings("unchecked")
 public class ServerProperties {
 
   static final Path DEFAULT_ROOT = Path.of("/var/gemini");
@@ -74,6 +80,54 @@ public class ServerProperties {
   private final Path keystore;
   private final String keystorePassword;
   private final boolean setModSslCgiMetaVars;
+
+  /**
+   * Creates a new set of server properties from YAML.
+   *
+   * @param  reader reader for YAML
+   */
+  public ServerProperties(Reader reader) throws IOException {
+    LoadSettings loadSettings = LoadSettings.builder().build();
+    Load load = new Load(loadSettings);
+    Map<String, Object> m = (Map<String, Object>) load.loadFromReader(reader);
+
+    root = getPath(m, "root", DEFAULT_ROOT);
+    host = (String) m.get("host");
+    port = getInt(m, "port", DEFAULT_PORT);
+    controlPort = getInt(m, "controlPort", DEFAULT_CONTROL_PORT);
+    shutdownTimeoutSec = getLong(m, "shutdownTimeoutSec",
+                                 DEFAULT_SHUTDOWN_TIMEOUT_SEC);
+    numThreads = getInt(m, "numThreads", DEFAULT_NUM_THREADS);
+    cgiDir = getPath(m, "cgiDir", DEFAULT_CGI_DIR);
+    maxLocalRedirects = getInt(m, "maxLocalRedirects",
+                               DEFAULT_MAX_LOCAL_REDIRECTS);
+    forceCanonicalText = getBoolean(m, "forceCanonicalText",
+                                    DEFAULT_FORCE_CANONICAL_TEXT);
+    textGeminiSuffixes = getStringList(m, "textGeminiSuffixes",
+                                       DEFAULT_TEXT_GEMINI_SUFFIXES);
+    defaultContentType = getString(m, "defaultContentType",
+                                   DEFAULT_DEFAULT_CONTENT_TYPE);
+    enableCharsetDetection = getBoolean(m, "enableCharsetDetection",
+                                        DEFAULT_ENABLE_CHARSET_DETECTION);
+    defaultCharset = getString(m, "defaultCharset",
+                               DEFAULT_DEFAULT_CHARSET);
+    favicon = getString(m, "favicon", DEFAULT_FAVICON);
+    feedPages = getStringList(m, "feedPages", DEFAULT_FEED_PAGES);
+    logDir = getPath(m, "logDir", DEFAULT_LOG_DIR);
+    keystore = getPath(m, "keystore", DEFAULT_KEYSTORE);
+    keystorePassword = getString(m, "keystorePassword",
+                                 DEFAULT_KEYSTORE_PASSWORD);
+    setModSslCgiMetaVars = getBoolean(m, "setModSslCgiMetaVars",
+                                      DEFAULT_SET_MOD_SSL_CGI_META_VARS);
+
+    try {
+      secureDomains = buildSecureDomains(m);
+    } catch (GeneralSecurityException | IOException e) {
+      throw new IllegalStateException("Failed to build secure domain", e);
+    }
+
+    validateConfiguration();
+  }
 
   /**
    * Creates a new set of server properties from Java properties.
@@ -122,6 +176,10 @@ public class ServerProperties {
       throw new IllegalStateException("Failed to build secure domain", e);
     }
 
+    validateConfiguration();
+  }
+
+  private final void validateConfiguration() {
     if (port < 1 || port > 65535) {
       throw new IllegalStateException("port must be between 1 and 65535");
     }
@@ -131,6 +189,26 @@ public class ServerProperties {
     if (maxLocalRedirects < 0) {
       throw new IllegalStateException("maxLocalRedirects must be non-negative");
     }
+  }
+
+  private String getString(Map<String, Object> m, String key,
+                           String defaultValue) {
+    if (!m.containsKey(key)) {
+      return defaultValue;
+    }
+    return (String) m.get(key);
+  }
+
+  private List<String> getStringList(Map<String, Object> m, String key,
+                                     List<String> defaultValue) {
+    if (!m.containsKey(key)) {
+      return defaultValue;
+    }
+    List<Object> value = (List<Object>) m.get(key);
+    return value.stream()
+        .map(String.class::cast)
+        .filter(s -> !s.isEmpty())
+        .collect(Collectors.toList());
   }
 
   private List<String> getStringListProperty(Properties props, String key,
@@ -143,11 +221,25 @@ public class ServerProperties {
         .collect(Collectors.toList());
   }
 
+  private Path getPath(Map<String, Object> m, String key, Path defaultValue) {
+    if (!m.containsKey(key)) {
+      return defaultValue;
+    }
+    return FileSystems.getDefault().getPath((String) m.get(key));
+  }
+
   private Path getPathProperty(Properties props, String key, Path defaultValue) {
     if (!props.containsKey(key)) {
       return defaultValue;
     }
     return FileSystems.getDefault().getPath(props.getProperty(key));
+  }
+
+  private int getInt(Map<String, Object> m, String key, int defaultValue) {
+    if (!m.containsKey(key)) {
+      return defaultValue;
+    }
+    return ((Integer) m.get(key)).intValue();
   }
 
   private int getIntProperty(Properties props, String key, int defaultValue) {
@@ -157,11 +249,33 @@ public class ServerProperties {
     return Integer.parseInt(props.getProperty(key));
   }
 
+  private long getLong(Map<String, Object> m, String key, long defaultValue) {
+    if (!m.containsKey(key)) {
+      return defaultValue;
+    }
+    Object value = m.get(key);
+    if (value instanceof Integer) {
+      return ((Integer) value).longValue();
+    } else if (value instanceof Long) {
+      return ((Long) value).longValue();
+    } else {
+      throw new IllegalStateException("Value for " + key + " out of range: " +
+                                      value);
+    }
+  }
+
   private long getLongProperty(Properties props, String key, long defaultValue) {
     if (!props.containsKey(key)) {
       return defaultValue;
     }
     return Long.parseLong(props.getProperty(key));
+  }
+
+  private boolean getBoolean(Map<String, Object> m, String key, boolean defaultValue) {
+    if (!m.containsKey(key)) {
+      return defaultValue;
+    }
+    return ((Boolean) m.get(key)).booleanValue();
   }
 
   private boolean getBooleanProperty(Properties props, String key,
@@ -189,6 +303,35 @@ public class ServerProperties {
                                           "a password");
         }
         secureDomains.add(new SecureDomain(path, truststore, domainValues[2]));
+      } else {
+        secureDomains.add(new SecureDomain(path));
+      }
+    }
+    return secureDomains;
+  }
+
+  private List<SecureDomain> buildSecureDomains(Map<String, Object> m)
+    throws GeneralSecurityException, IOException {
+    List<SecureDomain> secureDomains = new ArrayList<>();
+    if (!m.containsKey("secureDomains")) {
+      return secureDomains;
+    }
+    Map<String, Object> sdm = (Map<String, Object>) m.get("secureDomains");
+    for (String pathString : sdm.keySet()) {
+      Path path = FileSystems.getDefault().getPath(pathString);
+      Map<String, Object> secureDomainInfo =
+          (Map<String, Object>) sdm.get(pathString);
+      if (secureDomainInfo.containsKey("truststore")) {
+        String truststoreString = (String) secureDomainInfo.get("truststore");
+        Path truststore = FileSystems.getDefault().getPath(truststoreString);
+        if (!secureDomainInfo.containsKey("truststorePassword")) {
+          throw new IllegalStateException("Secure domain " + pathString +
+                                          " specifies a truststore without " +
+                                          "a password");
+        }
+        String truststorePassword =
+          (String) secureDomainInfo.get("truststorePassword");
+        secureDomains.add(new SecureDomain(path, truststore, truststorePassword));
       } else {
         secureDomains.add(new SecureDomain(path));
       }

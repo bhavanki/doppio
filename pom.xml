@@ -41,6 +41,11 @@
       <version>2.4.0</version>
     </dependency>
     <dependency>
+      <groupId>org.snakeyaml</groupId>
+      <artifactId>snakeyaml-engine</artifactId>
+      <version>2.3</version>
+    </dependency>
+    <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-api</artifactId>
       <version>5.7.0</version>
@@ -138,6 +143,10 @@
             <relocation>
               <pattern>org.mozilla</pattern>
               <shadedPattern>com.havanki.doppio.shaded.org.mozilla</shadedPattern>
+            </relocation>
+            <relocation>
+              <pattern>org.snakeyaml</pattern>
+              <shadedPattern>com.havanki.doppio.shaded.org.snakeyaml</shadedPattern>
             </relocation>
           </relocations>
         </configuration>
