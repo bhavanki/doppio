@@ -34,25 +34,25 @@ import java.util.stream.Collectors;
  */
 public class ServerProperties {
 
-  private static final Path DEFAULT_ROOT = Path.of("/var/gemini");
-  private static final int DEFAULT_PORT = 1965;
-  private static final int DEFAULT_CONTROL_PORT = 31965;
-  private static final long DEFAULT_SHUTDOWN_TIMEOUT_SEC = 5;
-  private static final int DEFAULT_NUM_THREADS = 4;
-  private static final Path DEFAULT_CGI_DIR = null;
-  private static final int DEFAULT_MAX_LOCAL_REDIRECTS = 10;
-  private static final List<String> DEFAULT_TEXT_GEMINI_SUFFIXES =
+  static final Path DEFAULT_ROOT = Path.of("/var/gemini");
+  static final int DEFAULT_PORT = 1965;
+  static final int DEFAULT_CONTROL_PORT = 31965;
+  static final long DEFAULT_SHUTDOWN_TIMEOUT_SEC = 5;
+  static final int DEFAULT_NUM_THREADS = 4;
+  static final Path DEFAULT_CGI_DIR = null;
+  static final int DEFAULT_MAX_LOCAL_REDIRECTS = 10;
+  static final boolean DEFAULT_FORCE_CANONICAL_TEXT = false;
+  static final List<String> DEFAULT_TEXT_GEMINI_SUFFIXES =
     List.of(".gmi", ".gemini");
-  private static final String DEFAULT_DEFAULT_CONTENT_TYPE = "text/plain";
-  private static final boolean DEFAULT_ENABLE_CHARSET_DETECTION = false;
-  private static final String DEFAULT_DEFAULT_CHARSET = null;
-  private static final String DEFAULT_FAVICON = null;
-  private static final List<String> DEFAULT_FEED_PAGES = List.of();
-  private static final boolean DEFAULT_FORCE_CANONICAL_TEXT = false;
-  private static final Path DEFAULT_LOG_DIR = null;
-  private static final Path DEFAULT_KEYSTORE = Path.of("/etc/doppio/keystore.jks");
-  private static final String DEFAULT_KEYSTORE_PASSWORD = "doppio";
-  private static final boolean DEFAULT_SET_MOD_SSL_CGI_META_VARS = false;
+  static final String DEFAULT_DEFAULT_CONTENT_TYPE = "text/plain";
+  static final boolean DEFAULT_ENABLE_CHARSET_DETECTION = false;
+  static final String DEFAULT_DEFAULT_CHARSET = null;
+  static final String DEFAULT_FAVICON = null;
+  static final List<String> DEFAULT_FEED_PAGES = List.of();
+  static final Path DEFAULT_LOG_DIR = null;
+  static final Path DEFAULT_KEYSTORE = Path.of("/etc/doppio/keystore.jks");
+  static final String DEFAULT_KEYSTORE_PASSWORD = "doppio";
+  static final boolean DEFAULT_SET_MOD_SSL_CGI_META_VARS = false;
 
   private final Path root;
   private final String host;
