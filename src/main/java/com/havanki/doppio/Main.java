@@ -40,11 +40,12 @@ public class Main {
     ServerProperties serverProps;
     try (FileReader r = new FileReader(serverPropsFile)) {
       if (serverPropsFile.endsWith(".yaml")) {
-        serverProps = new ServerProperties(r);
+        serverProps = new ServerPropertiesYamlLoader().loadFromYaml(r);
       } else {
         Properties props = new Properties();
         props.load(r);
-        serverProps = new ServerProperties(props);
+        serverProps = new ServerPropertiesPropertiesLoader()
+            .loadFromProperties(props);
       }
     }
     Server server = new Server(serverProps);

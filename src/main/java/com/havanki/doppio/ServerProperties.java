@@ -19,20 +19,9 @@
 
 package com.havanki.doppio;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.security.GeneralSecurityException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.stream.Collectors;
-
-import org.snakeyaml.engine.v2.api.Load;
-import org.snakeyaml.engine.v2.api.LoadSettings;
 
 /**
  * Server configuration properties.
@@ -82,104 +71,57 @@ public class ServerProperties {
   private final boolean setModSslCgiMetaVars;
 
   /**
-   * Creates a new set of server properties from YAML.
-   *
-   * @param  reader reader for YAML
+   * Creates new server properties. Use of a builder is preferred to calling
+   * this directly.
    */
-  public ServerProperties(Reader reader) throws IOException {
-    LoadSettings loadSettings = LoadSettings.builder().build();
-    Load load = new Load(loadSettings);
-    Map<String, Object> m = (Map<String, Object>) load.loadFromReader(reader);
-
-    root = getPath(m, "root", DEFAULT_ROOT);
-    host = (String) m.get("host");
-    port = getInt(m, "port", DEFAULT_PORT);
-    controlPort = getInt(m, "controlPort", DEFAULT_CONTROL_PORT);
-    shutdownTimeoutSec = getLong(m, "shutdownTimeoutSec",
-                                 DEFAULT_SHUTDOWN_TIMEOUT_SEC);
-    numThreads = getInt(m, "numThreads", DEFAULT_NUM_THREADS);
-    cgiDir = getPath(m, "cgiDir", DEFAULT_CGI_DIR);
-    maxLocalRedirects = getInt(m, "maxLocalRedirects",
-                               DEFAULT_MAX_LOCAL_REDIRECTS);
-    forceCanonicalText = getBoolean(m, "forceCanonicalText",
-                                    DEFAULT_FORCE_CANONICAL_TEXT);
-    textGeminiSuffixes = getStringList(m, "textGeminiSuffixes",
-                                       DEFAULT_TEXT_GEMINI_SUFFIXES);
-    defaultContentType = getString(m, "defaultContentType",
-                                   DEFAULT_DEFAULT_CONTENT_TYPE);
-    enableCharsetDetection = getBoolean(m, "enableCharsetDetection",
-                                        DEFAULT_ENABLE_CHARSET_DETECTION);
-    defaultCharset = getString(m, "defaultCharset",
-                               DEFAULT_DEFAULT_CHARSET);
-    favicon = getString(m, "favicon", DEFAULT_FAVICON);
-    feedPages = getStringList(m, "feedPages", DEFAULT_FEED_PAGES);
-    logDir = getPath(m, "logDir", DEFAULT_LOG_DIR);
-    keystore = getPath(m, "keystore", DEFAULT_KEYSTORE);
-    keystorePassword = getString(m, "keystorePassword",
-                                 DEFAULT_KEYSTORE_PASSWORD);
-    setModSslCgiMetaVars = getBoolean(m, "setModSslCgiMetaVars",
-                                      DEFAULT_SET_MOD_SSL_CGI_META_VARS);
-
-    try {
-      secureDomains = buildSecureDomains(m);
-    } catch (GeneralSecurityException | IOException e) {
-      throw new IllegalStateException("Failed to build secure domain", e);
-    }
-
-    validateConfiguration();
+  ServerProperties(
+    Path root,
+    String host,
+    int port,
+    int controlPort,
+    long shutdownTimeoutSec,
+    int numThreads,
+    Path cgiDir,
+    int maxLocalRedirects,
+    boolean forceCanonicalText,
+    List<String> textGeminiSuffixes,
+    String defaultContentType,
+    boolean enableCharsetDetection,
+    String defaultCharset,
+    String favicon,
+    List<String> feedPages,
+    Path logDir,
+    List<SecureDomain> secureDomains,
+    Path keystore,
+    String keystorePassword,
+    boolean setModSslCgiMetaVars
+  ) {
+    this.root = root;
+    this.host = host;
+    this.port = port;
+    this.controlPort = controlPort;
+    this.shutdownTimeoutSec = shutdownTimeoutSec;
+    this.numThreads = numThreads;
+    this.cgiDir = cgiDir;
+    this.maxLocalRedirects = maxLocalRedirects;
+    this.forceCanonicalText = forceCanonicalText;
+    this.textGeminiSuffixes = textGeminiSuffixes;
+    this.defaultContentType = defaultContentType;
+    this.enableCharsetDetection = enableCharsetDetection;
+    this.defaultCharset = defaultCharset;
+    this.favicon = favicon;
+    this.feedPages = feedPages;
+    this.logDir = logDir;
+    this.secureDomains = secureDomains;
+    this.keystore = keystore;
+    this.keystorePassword = keystorePassword;
+    this.setModSslCgiMetaVars = setModSslCgiMetaVars;
   }
 
-  /**
-   * Creates a new set of server properties from Java properties.
-   *
-   * @param  props Java properties
-   */
-  public ServerProperties(Properties props) {
-    root = getPathProperty(props, "root", DEFAULT_ROOT);
-    host = props.getProperty("host");
-    port = getIntProperty(props, "port", DEFAULT_PORT);
-    controlPort = getIntProperty(props, "controlPort", DEFAULT_CONTROL_PORT);
-    shutdownTimeoutSec = getLongProperty(props, "shutdownTimeoutSec",
-                                         DEFAULT_SHUTDOWN_TIMEOUT_SEC);
-    numThreads = getIntProperty(props, "numThreads", DEFAULT_NUM_THREADS);
-    cgiDir = getPathProperty(props, "cgiDir", DEFAULT_CGI_DIR);
-    maxLocalRedirects = getIntProperty(props, "maxLocalRedirects",
-                                       DEFAULT_MAX_LOCAL_REDIRECTS);
-    forceCanonicalText = getBooleanProperty(props, "forceCanonicalText",
-                                            DEFAULT_FORCE_CANONICAL_TEXT);
-    textGeminiSuffixes = getStringListProperty(props, "textGeminiSuffixes",
-                                               DEFAULT_TEXT_GEMINI_SUFFIXES);
-    defaultContentType = props.getProperty("defaultContentType",
-                                           DEFAULT_DEFAULT_CONTENT_TYPE);
-    enableCharsetDetection = getBooleanProperty(props, "enableCharsetDetection",
-                                                DEFAULT_ENABLE_CHARSET_DETECTION);
-    defaultCharset = props.getProperty("defaultCharset",
-                                       DEFAULT_DEFAULT_CHARSET);
-    favicon = props.getProperty("favicon", DEFAULT_FAVICON);
-    // Counting emoji in Java just ain't reliable
-    // https://lemire.me/blog/2018/06/15/emojis-java-and-strings/
-    // if (favicon != null && favicon.codePointCount(0, favicon.length()) != 1) {
-    //   throw new IllegalStateException("Favicon must be exactly one character, " +
-    //                                   "found " + favicon.codePointCount(0, favicon.length()));
-    // }
-    feedPages = getStringListProperty(props, "feedPages", DEFAULT_FEED_PAGES);
-    logDir = getPathProperty(props, "logDir", DEFAULT_LOG_DIR);
-    keystore = getPathProperty(props, "keystore", DEFAULT_KEYSTORE);
-    keystorePassword = props.getProperty("keystorePassword",
-                                         DEFAULT_KEYSTORE_PASSWORD);
-    setModSslCgiMetaVars = getBooleanProperty(props, "setModSslCgiMetaVars",
-                                              DEFAULT_SET_MOD_SSL_CGI_META_VARS);
-
-    try {
-      secureDomains = buildSecureDomains(props);
-    } catch (GeneralSecurityException | IOException e) {
-      throw new IllegalStateException("Failed to build secure domain", e);
+  void validate() {
+    if (host == null) {
+      throw new IllegalStateException("host may not be null");
     }
-
-    validateConfiguration();
-  }
-
-  private final void validateConfiguration() {
     if (port < 1 || port > 65535) {
       throw new IllegalStateException("port must be between 1 and 65535");
     }
@@ -189,154 +131,6 @@ public class ServerProperties {
     if (maxLocalRedirects < 0) {
       throw new IllegalStateException("maxLocalRedirects must be non-negative");
     }
-  }
-
-  private String getString(Map<String, Object> m, String key,
-                           String defaultValue) {
-    if (!m.containsKey(key)) {
-      return defaultValue;
-    }
-    return (String) m.get(key);
-  }
-
-  private List<String> getStringList(Map<String, Object> m, String key,
-                                     List<String> defaultValue) {
-    if (!m.containsKey(key)) {
-      return defaultValue;
-    }
-    List<Object> value = (List<Object>) m.get(key);
-    return value.stream()
-        .map(String.class::cast)
-        .filter(s -> !s.isEmpty())
-        .collect(Collectors.toList());
-  }
-
-  private List<String> getStringListProperty(Properties props, String key,
-                                             List<String> defaultValue) {
-    if (!props.containsKey(key)) {
-      return defaultValue;
-    }
-    return Arrays.stream(props.getProperty(key).split(","))
-        .filter(s -> !s.isEmpty())
-        .collect(Collectors.toList());
-  }
-
-  private Path getPath(Map<String, Object> m, String key, Path defaultValue) {
-    if (!m.containsKey(key)) {
-      return defaultValue;
-    }
-    return FileSystems.getDefault().getPath((String) m.get(key));
-  }
-
-  private Path getPathProperty(Properties props, String key, Path defaultValue) {
-    if (!props.containsKey(key)) {
-      return defaultValue;
-    }
-    return FileSystems.getDefault().getPath(props.getProperty(key));
-  }
-
-  private int getInt(Map<String, Object> m, String key, int defaultValue) {
-    if (!m.containsKey(key)) {
-      return defaultValue;
-    }
-    return ((Integer) m.get(key)).intValue();
-  }
-
-  private int getIntProperty(Properties props, String key, int defaultValue) {
-    if (!props.containsKey(key)) {
-      return defaultValue;
-    }
-    return Integer.parseInt(props.getProperty(key));
-  }
-
-  private long getLong(Map<String, Object> m, String key, long defaultValue) {
-    if (!m.containsKey(key)) {
-      return defaultValue;
-    }
-    Object value = m.get(key);
-    if (value instanceof Integer) {
-      return ((Integer) value).longValue();
-    } else if (value instanceof Long) {
-      return ((Long) value).longValue();
-    } else {
-      throw new IllegalStateException("Value for " + key + " out of range: " +
-                                      value);
-    }
-  }
-
-  private long getLongProperty(Properties props, String key, long defaultValue) {
-    if (!props.containsKey(key)) {
-      return defaultValue;
-    }
-    return Long.parseLong(props.getProperty(key));
-  }
-
-  private boolean getBoolean(Map<String, Object> m, String key, boolean defaultValue) {
-    if (!m.containsKey(key)) {
-      return defaultValue;
-    }
-    return ((Boolean) m.get(key)).booleanValue();
-  }
-
-  private boolean getBooleanProperty(Properties props, String key,
-                                     boolean defaultValue) {
-    if (!props.containsKey(key)) {
-      return defaultValue;
-    }
-    return Boolean.parseBoolean(props.getProperty(key));
-  }
-
-  private List<SecureDomain> buildSecureDomains(Properties props)
-    throws GeneralSecurityException, IOException {
-    List<SecureDomain> secureDomains = new ArrayList<>();
-    for (String key : props.stringPropertyNames()) {
-      if (!key.startsWith("secureDomain.")) {
-        continue;
-      }
-      String[] domainValues = props.getProperty(key).split(":", 3);
-      Path path = FileSystems.getDefault().getPath(domainValues[0]);
-      if (domainValues.length > 1) {
-        Path truststore = FileSystems.getDefault().getPath(domainValues[1]);
-        if (domainValues.length < 3) {
-          throw new IllegalStateException("Value for secure domain " + key +
-                                          " specifies a truststore without " +
-                                          "a password");
-        }
-        secureDomains.add(new SecureDomain(path, truststore, domainValues[2]));
-      } else {
-        secureDomains.add(new SecureDomain(path));
-      }
-    }
-    return secureDomains;
-  }
-
-  private List<SecureDomain> buildSecureDomains(Map<String, Object> m)
-    throws GeneralSecurityException, IOException {
-    List<SecureDomain> secureDomains = new ArrayList<>();
-    if (!m.containsKey("secureDomains")) {
-      return secureDomains;
-    }
-    Map<String, Object> sdm = (Map<String, Object>) m.get("secureDomains");
-    for (String pathString : sdm.keySet()) {
-      Path path = FileSystems.getDefault().getPath(pathString);
-      Map<String, Object> secureDomainInfo =
-          (Map<String, Object>) sdm.get(pathString);
-      if (secureDomainInfo.containsKey("truststore")) {
-        String truststoreString = (String) secureDomainInfo.get("truststore");
-        Path truststore = FileSystems.getDefault().getPath(truststoreString);
-        if (!secureDomainInfo.containsKey("truststorePassword")) {
-          throw new IllegalStateException("Secure domain " + pathString +
-                                          " specifies a truststore without " +
-                                          "a password");
-        }
-        String truststorePassword =
-          (String) secureDomainInfo.get("truststorePassword");
-        secureDomains.add(new SecureDomain(path, truststore, truststorePassword));
-      } else {
-        secureDomains.add(new SecureDomain(path));
-      }
-    }
-    return secureDomains;
   }
 
   /**
@@ -519,5 +313,147 @@ public class ServerProperties {
    */
   public boolean isSetModSslCgiMetaVars() {
     return setModSslCgiMetaVars;
+  }
+
+  /**
+   * Gets a new builder for server properties.
+   *
+   * @return new builder
+   */
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /**
+   * A builder for {@link ServerProperties}.
+   */
+  public static class Builder {
+
+    private Path root = DEFAULT_ROOT;
+    private String host;
+    private int port = DEFAULT_PORT;
+    private int controlPort = DEFAULT_CONTROL_PORT;
+    private long shutdownTimeoutSec = DEFAULT_SHUTDOWN_TIMEOUT_SEC;
+    private int numThreads = DEFAULT_NUM_THREADS;
+    private Path cgiDir = DEFAULT_CGI_DIR;
+    private int maxLocalRedirects = DEFAULT_MAX_LOCAL_REDIRECTS;
+    private boolean forceCanonicalText = DEFAULT_FORCE_CANONICAL_TEXT;
+    private List<String> textGeminiSuffixes = DEFAULT_TEXT_GEMINI_SUFFIXES;
+    private String defaultContentType = DEFAULT_DEFAULT_CONTENT_TYPE;
+    private boolean enableCharsetDetection = DEFAULT_ENABLE_CHARSET_DETECTION;
+    private String defaultCharset = DEFAULT_DEFAULT_CHARSET;
+    private String favicon = DEFAULT_FAVICON;
+    private List<String> feedPages = DEFAULT_FEED_PAGES;
+    private Path logDir = DEFAULT_LOG_DIR;
+    private List<SecureDomain> secureDomains = new ArrayList<>();
+    private Path keystore = DEFAULT_KEYSTORE;
+    private String keystorePassword = DEFAULT_KEYSTORE_PASSWORD;
+    private boolean setModSslCgiMetaVars = DEFAULT_SET_MOD_SSL_CGI_META_VARS;
+
+    public Builder root(Path root) {
+      this.root = root;
+      return this;
+    }
+    public Builder host(String host) {
+      this.host = host;
+      return this;
+    }
+    public Builder port(int port) {
+      this.port = port;
+      return this;
+    }
+    public Builder controlPort(int controlPort) {
+      this.controlPort = controlPort;
+      return this;
+    }
+    public Builder shutdownTimeoutSec(long shutdownTimeoutSec) {
+      this.shutdownTimeoutSec = shutdownTimeoutSec;
+      return this;
+    }
+    public Builder numThreads(int numThreads) {
+      this.numThreads = numThreads;
+      return this;
+    }
+    public Builder cgiDir(Path cgiDir) {
+      this.cgiDir = cgiDir;
+      return this;
+    }
+    public Builder maxLocalRedirects(int maxLocalRedirects) {
+      this.maxLocalRedirects = maxLocalRedirects;
+      return this;
+    }
+    public Builder forceCanonicalText(boolean forceCanonicalText) {
+      this.forceCanonicalText = forceCanonicalText;
+      return this;
+    }
+    public Builder textGeminiSuffixes(List<String> textGeminiSuffixes) {
+      this.textGeminiSuffixes = textGeminiSuffixes;
+      return this;
+    }
+    public Builder defaultContentType(String defaultContentType) {
+      this.defaultContentType = defaultContentType;
+      return this;
+    }
+    public Builder enableCharsetDetection(boolean enableCharsetDetection) {
+      this.enableCharsetDetection = enableCharsetDetection;
+      return this;
+    }
+    public Builder defaultCharset(String defaultCharset) {
+      this.defaultCharset = defaultCharset;
+      return this;
+    }
+    public Builder favicon(String favicon) {
+      this.favicon = favicon;
+      return this;
+    }
+    public Builder feedPages(List<String> feedPages) {
+      this.feedPages = feedPages;
+      return this;
+    }
+    public Builder logDir(Path logDir) {
+      this.logDir = logDir;
+      return this;
+    }
+    public Builder secureDomains(List<SecureDomain> secureDomains) {
+      this.secureDomains = secureDomains;
+      return this;
+    }
+    public Builder keystore(Path keystore) {
+      this.keystore = keystore;
+      return this;
+    }
+    public Builder keystorePassword(String keystorePassword) {
+      this.keystorePassword = keystorePassword;
+      return this;
+    }
+    public Builder setModSslCgiMetaVars(boolean setModSslCgiMetaVars) {
+      this.setModSslCgiMetaVars = setModSslCgiMetaVars;
+      return this;
+    }
+
+    public ServerProperties build() {
+      return new ServerProperties(
+        root,
+        host,
+        port,
+        controlPort,
+        shutdownTimeoutSec,
+        numThreads,
+        cgiDir,
+        maxLocalRedirects,
+        forceCanonicalText,
+        textGeminiSuffixes,
+        defaultContentType,
+        enableCharsetDetection,
+        defaultCharset,
+        favicon,
+        feedPages,
+        logDir,
+        secureDomains,
+        keystore,
+        keystorePassword,
+        setModSslCgiMetaVars
+      );
+    }
   }
 }
