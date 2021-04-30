@@ -138,6 +138,14 @@ public class Server {
       } catch (IOException e) {
         LOG.warn("Failed to close access log", e);
       }
+
+      if (controlSocket != null) {
+        try {
+          controlSocket.close();
+        } catch (IOException e) {
+          LOG.warn("Failed to close control socket", e);
+        }
+      }
     }
   }
 
