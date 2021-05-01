@@ -22,6 +22,7 @@ package com.havanki.doppio;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -30,6 +31,7 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.net.Socket;
 import java.net.URI;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateExpiredException;
@@ -131,7 +133,7 @@ public class RequestHandler implements Runnable {
                                 .onMalformedInput(CodingErrorAction.REPORT)
                                 .onUnmappableCharacter(CodingErrorAction.REPORT));
          BufferedReader in = new BufferedReader(isr);
-         OutputStream os = socket.getOutputStream();
+         OutputStream os = new SocketOutputStream(socket);
          BufferedOutputStream out = new BufferedOutputStream(os)) {
 
       // Read the single-line Gemini request.
@@ -540,5 +542,29 @@ public class RequestHandler implements Runnable {
     byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
     out.write(bytes);
     return (long) bytes.length;
+  }
+
+  /**
+   * Java likes to send a TLS user_canceled alert before it closes a TLS
+   * connection, which some clients interpret as an error. The workaround is to
+   * shutdown socket output before closing the socket. Also, unfortunately, Java
+   * closes a socket when its input or output stream is closed. So, this class
+   * wraps a socket output stream so that, when the stream is closed, it can
+   * shutdown socket output first.
+   */
+  private static class SocketOutputStream extends FilterOutputStream {
+
+    private final Socket socket;
+
+    private SocketOutputStream(Socket socket) throws IOException {
+      super(socket.getOutputStream());
+      this.socket = socket;
+    }
+
+    @Override
+    public void close() throws IOException {
+      socket.shutdownOutput();
+      super.close();
+    }
   }
 }
