@@ -55,7 +55,7 @@ public class RequestHandler implements Runnable {
 
   private static final Logger LOG = LoggerFactory.getLogger(RequestHandler.class);
 
-  private static final int MAX_REQUEST_BYTES = 1026; // 1024 + CRLF
+  private static final int MAX_REQUEST_BYTES = 1025;  // one more than permitted
   private static final String CRLF = "\r\n";
   private static final String ATOM_FEED_FILE_NAME = "atom.xml";
   private static final String ATOM_FEED_META = "text/xml;charset=utf-8";
@@ -142,6 +142,10 @@ public class RequestHandler implements Runnable {
         throw new IOException("Read null line from request");
       }
       request = request.trim();
+      if (request.length() >= MAX_REQUEST_BYTES) {
+        statusCode = StatusCodes.BAD_REQUEST;
+        writeResponseHeader(out, statusCode, "Request exceeds 1024 bytes");
+      }
 
       // Parse the request as a URI.
       URI uri;
