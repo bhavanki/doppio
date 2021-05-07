@@ -16,6 +16,12 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # Example properties file for Doppio
+#
+# An *entire* scalar value may be an environment variable reference.
+# root: ${DOPPIO_ROOT}  # substituted with value of environment variable
+# cgiDir: ${DOPPIO_ROOT}/cgi-bin  # NOT SUBSTITUTED
+# For more:
+# https://bitbucket.org/asomov/snakeyaml-engine/wiki/Documentation#markdown-header-variable-substitution
 
 # The root directory for static files.
 root: /var/gemini

@@ -27,10 +27,12 @@ import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.snakeyaml.engine.v2.api.Load;
 import org.snakeyaml.engine.v2.api.LoadSettings;
+import org.snakeyaml.engine.v2.env.EnvConfig;
 
 /**
  * A loader for server properties that reads from a YAML file.
@@ -46,7 +48,13 @@ public class ServerPropertiesYamlLoader {
    * @throws IllegalStateException if the properties are invalid
    */
   public ServerProperties loadFromYaml(Reader reader) {
-    LoadSettings loadSettings = LoadSettings.builder().build();
+    return loadFromYaml(reader, new EnvConfig(){});
+  }
+
+  ServerProperties loadFromYaml(Reader reader, EnvConfig envConfig) {
+    LoadSettings loadSettings = LoadSettings.builder()
+        .setEnvConfig(Optional.of(envConfig))
+        .build();
     Load load = new Load(loadSettings);
     Map<String, Object> m = (Map<String, Object>) load.loadFromReader(reader);
 

@@ -19,11 +19,15 @@
 
 package com.havanki.doppio;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.io.StringReader;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.snakeyaml.engine.v2.env.EnvConfig;
 
 public class ServerPropertiesYamlLoaderTest extends ServerPropertiesTest {
 
@@ -82,5 +86,27 @@ public class ServerPropertiesYamlLoaderTest extends ServerPropertiesTest {
     }
 
     assertMaximal(sp);
+  }
+
+  private static final String ENV_MINIMAL_YAML = "host: ${TEST_HOSTNAME}";
+
+  @Test
+  public void testEnvironmentSubstitution() {
+    EnvConfig envConfig = new EnvConfig() {
+      @Override
+      public Optional<String> getValueFor(String name, String separator,
+                                          String value, String environment) {
+        if ("TEST_HOSTNAME".equals(name)) {
+          return Optional.of("env.gemini.example.com");
+        }
+        return Optional.empty();
+      }
+    };
+
+    try (StringReader sr = new StringReader(ENV_MINIMAL_YAML)) {
+      sp = loader.loadFromYaml(sr, envConfig);
+    }
+
+    assertEquals("env.gemini.example.com", sp.getHost());
   }
 }
