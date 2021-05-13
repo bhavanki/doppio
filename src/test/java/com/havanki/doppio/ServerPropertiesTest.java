@@ -53,8 +53,7 @@ public class ServerPropertiesTest {
   static final String LOG_DIR = "/var/log/doppio";
   static final List<SecureDomain> SECURE_DOMAINS =
     List.of(new SecureDomain(Path.of("/path1")));
-  static final String KEYSTORE =
-    ServerProperties.DEFAULT_KEYSTORE.toString() + ".test";
+  static final String KEYSTORE = "/etc/doppio/keystore.jks";
   static final String KEYSTORE_PASSWORD =
     ServerProperties.DEFAULT_KEYSTORE_PASSWORD + "123456";
   static final boolean SET_MOD_SSL_CGI_META_VARS =

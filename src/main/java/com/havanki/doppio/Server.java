@@ -25,6 +25,7 @@ import java.net.ServerSocket;
 import java.net.SocketException;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
+import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -149,16 +150,35 @@ public class Server {
     }
   }
 
+  int TEMP_CERT_VALIDITY_IN_SEC = 24 * 60 * 60;  // = one day
+
   private SSLContext buildSSLContext()
     throws IOException, GeneralSecurityException {
     SSLContext sslContext = SSLContext.getInstance("TLS");
 
-    KeyStore keystore =
-        KeyStore.getInstance(serverProps.getKeystore().toFile(),
-                             serverProps.getKeystorePassword().toCharArray());
-    KeyManagerFactory kmf =
-        KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-    kmf.init(keystore, serverProps.getKeystorePassword().toCharArray());
+    KeyManagerFactory kmf;
+    if (serverProps.getKeystore() != null) {
+      KeyStore keystore =
+          KeyStore.getInstance(serverProps.getKeystore().toFile(),
+                               serverProps.getKeystorePassword().toCharArray());
+      kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+      kmf.init(keystore, serverProps.getKeystorePassword().toCharArray());
+    } else {
+      LOG.info("Generating temporary server certificate");
+      KeyStore tempKeystore = KeyStore.getInstance(KeyStore.getDefaultType());
+      tempKeystore.load(null, null);
+
+      TemporaryCertificateGenerator tempCertGen =
+          new TemporaryCertificateGenerator(serverProps.getHost(),
+                                            TEMP_CERT_VALIDITY_IN_SEC);
+      tempKeystore.setKeyEntry("doppio", tempCertGen.getPrivateKey(), null,
+                               new X509Certificate[] { tempCertGen.getCertificate() });
+      kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+      kmf.init(tempKeystore, null);
+
+      LOG.info("Temporary server certificate generated, expires " +
+               tempCertGen.getCertificate().getNotAfter());
+    }
 
     // Secure domains each control client authentication.
     TrustManager[] trustManagers = new TrustManager[] {

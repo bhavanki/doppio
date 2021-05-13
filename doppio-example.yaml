@@ -86,7 +86,8 @@ secureDomains:
     truststore: /etc/doppio/truststore2.jks
     truststorePassword: doppio
 
-# The keystore containing the server's private key.
+# The keystore containing the server's private key. If not specified, a
+# short-lived key is generated.
 keystore: /etc/doppio/keystore.jks
 
 # The password for the keystore.

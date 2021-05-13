@@ -45,7 +45,7 @@ public class ServerProperties {
   static final String DEFAULT_FAVICON = null;
   static final List<String> DEFAULT_FEED_PAGES = List.of();
   static final Path DEFAULT_LOG_DIR = null;
-  static final Path DEFAULT_KEYSTORE = Path.of("/etc/doppio/keystore.jks");
+  static final Path DEFAULT_KEYSTORE = null;
   static final String DEFAULT_KEYSTORE_PASSWORD = "doppio";
   static final boolean DEFAULT_SET_MOD_SSL_CGI_META_VARS = false;
 

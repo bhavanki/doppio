@@ -16,7 +16,9 @@ The result is a shaded executable JAR.
 
 ## Running
 
-Gemini requires a server certificate, so generate one using keytool. This example command generates an elliptic curve (EC) key and corresponding certificate.
+Gemini requires a server certificate. You can generate one using keytool, or let Doppio generate a temporary, non-persisted one that expires after one day.
+
+This example keytool command generates an elliptic curve (EC) key and corresponding certificate.
 
 ```
 $ keytool -genkeypair -keystore doppio.jks -storepass doppio -keyalg EC
@@ -35,8 +37,10 @@ Use a common name that matches your hostname.
 Then, create a server properties file. Use [doppio-example.yaml](doppio-example.yaml) or [doppio-example.properties](doppio-example.properties) as an example. Set the following properties:
 
 * `host` must match the name on the server certificate.
-* `keystore` must point to the keystore (e.g., JKS or PKCS#12 file) containing the server's private key.
-* `keystorePassword` must contain the password for the keystore.
+* `keystore` must point to the keystore (e.g., JKS or PKCS#12 file) containing the server's private key, if not using a temporary certificate.
+* `keystorePassword` must contain the password for the keystore, if not using a temporary certificate.
+
+When using a temporary certificate, do not set `keystore` and `keystorePassword`.
 
 Finally, run the JAR.
 
@@ -50,6 +54,10 @@ Doppio listens on two ports:
 * a control port for control commands: configuration property `controlPort`, default 31965
 
 Connections to the control port may only be made from the loopback address. If the `controlPort` configuration property is set to -1, then Doppio does not open a control port.
+
+### Temporary Certificate Caveat
+
+Doppio uses "internal proprietary API" code from the `sun.security` package to generate temporary server certificates. So, this feature might not work on JDKs besides the Oracle JDK and OpenJDK.
 
 ## Control Commands
 

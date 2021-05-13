@@ -100,6 +100,10 @@
         <configuration>
           <compilerArgs>
             <arg>-Xlint:unchecked</arg>
+            <arg>--add-exports</arg>
+            <arg>java.base/sun.security.tools.keytool=ALL-UNNAMED</arg>
+            <arg>--add-exports</arg>
+            <arg>java.base/sun.security.x509=ALL-UNNAMED</arg>
           </compilerArgs>
         </configuration>
       </plugin>
