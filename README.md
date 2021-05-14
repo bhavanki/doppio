@@ -4,6 +4,15 @@
 
 A [Gemini](https://gemini.circumlunar.space/) server.
 
+## Trying It Out
+
+```
+$ docker run --rm -d -p 1965:1965 -e DOPPIO_HOSTNAME=example.com \
+  bhavanki/doppio:latest
+```
+
+Use a hostname that resolves to the Docker host. Then, point your favorite Gemini client to your host (e.g., gemini://example.com/) to see the default welcome page. Welcome to Geminispace!
+
 ## Building
 
 Use [Apache Maven](https://maven.apache.org/).
@@ -16,7 +25,9 @@ The result is a shaded executable JAR.
 
 ## Running
 
-Gemini requires a server certificate. You can generate one using keytool, or let Doppio generate a temporary, non-persisted one that expires after one day.
+### Certificate Generation
+
+Gemini requires a server certificate. You can generate one yourself, or let Doppio generate a temporary, non-persisted certificate that expires after one day.
 
 This example keytool command generates an elliptic curve (EC) key and corresponding certificate.
 
@@ -34,6 +45,8 @@ $ openssl pkcs12 -export -inkey doppio.key -in doppio.crt -out doppio.p12
 
 Use a common name that matches your hostname.
 
+### Server Properties File
+
 Then, create a server properties file. Use [doppio-example.yaml](doppio-example.yaml) or [doppio-example.properties](doppio-example.properties) as an example. Set the following properties:
 
 * `host` must match the name on the server certificate.
@@ -42,11 +55,32 @@ Then, create a server properties file. Use [doppio-example.yaml](doppio-example.
 
 When using a temporary certificate, do not set `keystore` and `keystorePassword`.
 
-Finally, run the JAR.
+When running Doppio in a container, set path server properties such as `keystore` to point to paths in the container, not on the host.
+
+### Running Directly
+
+Run the JAR.
 
 ```
 $ java -jar target/doppio-*.jar doppio.yaml
 ```
+
+### Running via Docker
+
+Run the Doppio Docker image.
+
+* Mount your server properties file to _/etc/doppio/doppio.yaml_.
+* The image is set up by default to generate a temporary certificate. To use a persistent one, mount it to the path specified by `keystore` in the server properties file.
+
+```
+$ docker run --rm -d -p 1965:1965 \
+  -e DOPPIO_HOSTNAME=example.com \
+  --mount type=bind,src=/host/path/to/doppio.yaml,dst=/etc/doppio/doppio.yaml \
+  --mount type=bind,src=/host/path/to/keystore.jks,dst=/etc/doppio/keystore.jks \
+  bhavanki/doppio:latest
+```
+
+### Ports
 
 Doppio listens on two ports:
 
@@ -54,6 +88,8 @@ Doppio listens on two ports:
 * a control port for control commands: configuration property `controlPort`, default 31965
 
 Connections to the control port may only be made from the loopback address. If the `controlPort` configuration property is set to -1, then Doppio does not open a control port.
+
+The control port is not supported when running Doppio in a container.
 
 ### Temporary Certificate Caveat
 
@@ -79,9 +115,17 @@ A log directory may be configured with the `logDir` configuration property. When
 * The second field in each line, the RFC 1413 client identity, is never provided.
 * The remote user is the subject DN of the client's authenticated certificate. The value is URL-encoded, primarily to avoid spaces in the logged value.
 
+The Doppio Docker image establishes _/var/log/doppio_ as a volume for logging.
+
 ## Static File Support
 
-Place static resources in the configured root directory. By default, resource content is streamed to clients exactly as it is in its resource. To force the conversion of line endings in text resources to canonical form (CRLF or "\r\n"), set the `forceCanonicalText` server property to `true`.
+Place static resources in the configured root directory. The Doppio Docker image establishes _/var/gemini_ as a volume for static resources. To bind mount a directory on the Docker host to that location:
+
+```
+... --mount type=bind,src=/host/path/to/root,dst=/var/gemini ...
+```
+
+By default, resource content is streamed to clients exactly as it is in its resource. To force the conversion of line endings in text resources to canonical form (CRLF or "\r\n"), set the `forceCanonicalText` server property to `true`.
 
 Content type is detected using Java's built-in mechanism, with additional support for recognizing a configurable set of file suffixes for text/gemini resources (defaults _.gmi_ and _.gemini_).
 
