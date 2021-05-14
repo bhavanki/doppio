@@ -1,0 +1,13 @@
+# Doppio Default Page
+
+## It Works
+
+This is the default welcome page for the Docker image of the Doppio Gemini server. If you can read this page, it means that Doppio running in a Docker container is working properly. You should replace this file (located at /var/gemini/index.gmi) before continuing to operate Doppio. The best way to do that is to mount a volume at /var/gemini which contains your capsule content.
+
+If you are a normal user of this capsule and don't know what this page is about, this probably means that the capsule is currently unavailable due to maintenance. If the problem persists, please contact the capsule's administrator.
+
+## About Doppio
+
+Doppio is a Gemini server written in Java. Learn more about it:
+
+=> https://github.com/bhavanki/doppio
