@@ -33,7 +33,6 @@ LABEL org.label-schema.docker.cmd="docker run --rm -d -p 1965:1965 -e DOPPIO_HOS
 LABEL org.label-schema.docker.params="DOPPIO_HOSTNAME=The host for the server (required)"
 
 EXPOSE 1965/tcp
-EXPOSE 31965/tcp
 
 RUN addgroup --system doppio && adduser --system --shell /bin/false --ingroup doppio doppio
 
@@ -49,6 +48,10 @@ RUN mkdir /var/gemini
 COPY index-docker.gmi /var/gemini/index.gmi
 RUN chown -R doppio:doppio /var/gemini
 VOLUME /var/gemini
+
+RUN mkdir /var/log/doppio
+RUN chown -R doppio:doppio /var/log/doppio
+VOLUME /var/log/doppio
 
 USER doppio
 CMD ["java", "-jar", "/opt/doppio/doppio.jar", "/etc/doppio/doppio.yaml"]
