@@ -31,3 +31,9 @@ docker build . \
   --build-arg "GIT_HASH=${GIT_HASH}" \
   --build-arg "VERSION=${VERSION}" \
   -t "doppio:${VERSION}"
+
+if [[ ! $VERSION =~ SNAPSHOT$ ]]; then
+  docker tag "doppio:$VERSION" "bhavanki/doppio:${VERSION}"
+  echo "Tagged for push:"
+  echo "  docker push bhavanki/doppio:${VERSION}"
+fi
