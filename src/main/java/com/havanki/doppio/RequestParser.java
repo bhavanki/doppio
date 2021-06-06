@@ -78,6 +78,18 @@ public class RequestParser {
                                        StatusCodes.PROXY_REQUEST_REFUSED);
     }
 
+    // Reject a URI with a userinfo component.
+    if (uri.getRawUserInfo() != null) {
+      throw new RequestParserException("User-info component not permitted",
+                                       StatusCodes.BAD_REQUEST);
+    }
+
+    // Reject a URI with a fragment component.
+    if (uri.getFragment() != null) {
+      throw new RequestParserException("Fragment component not permitted",
+                                       StatusCodes.BAD_REQUEST);
+    }
+
     // Ensure the URI refers to a host served by this server.
     if (!hasMatchingHost(uri)) {
       throw new RequestParserException("Invalid host",

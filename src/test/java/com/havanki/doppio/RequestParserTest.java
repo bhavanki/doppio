@@ -82,6 +82,30 @@ public class RequestParserTest {
   }
 
   @Test
+  public void testUserInfo() {
+    String request = "gemini://user@gemini.example.com/foo";
+
+    RequestParser.RequestParserException e =
+        assertThrows(RequestParser.RequestParserException.class,
+                     () -> requestParser.parse(request));
+
+    assertEquals("User-info component not permitted", e.getMessage());
+    assertEquals(StatusCodes.BAD_REQUEST, e.getStatusCode());
+  }
+
+  @Test
+  public void testFragment() {
+    String request = "gemini://gemini.example.com/foo#bar";
+
+    RequestParser.RequestParserException e =
+        assertThrows(RequestParser.RequestParserException.class,
+                     () -> requestParser.parse(request));
+
+    assertEquals("Fragment component not permitted", e.getMessage());
+    assertEquals(StatusCodes.BAD_REQUEST, e.getStatusCode());
+  }
+
+  @Test
   public void testWrongHost() throws Exception {
     String request = "gemini://www.example.com/foo";
 

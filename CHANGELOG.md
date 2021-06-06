@@ -2,19 +2,21 @@
 
 ## v0.7.0
 
-*unreleased*
+### Fixed
+
+* Request URIs with either a user-information or fragment component are rejected.
 
 ## v0.6.0
 
 *2021-05-15*
 
-## Added
+### Added
 
 * The server configuration may now be supplied in a YAML file as an alternative to Java properties. Whole values may be specified by environment variables.
 * When a keystore is not configured, the server generates a temporary server certificate that expires in one day. This is useful for quick trial runs and ad hoc testing.
 * A Dockerfile and associated files are defined so that the server can be packaged in and run from a Docker image.
 
-## Fixed
+### Fixed
 
 * The control socket is now properly closed on server shutdown.
 * A TLS user_canceled alert is no longer sent before a connection is closed. This keeps some Gemini clients from reporting errors, even for otherwise successful connections.
