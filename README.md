@@ -4,6 +4,9 @@
 
 A [Gemini](https://gemini.circumlunar.space/) server.
 
+[![Java CI with Maven](https://github.com/bhavanki/doppio/actions/workflows/maven.yml/badge.svg)](https://github.com/bhavanki/doppio/actions/workflows/maven.yml)
+[![CodeQL](https://github.com/bhavanki/doppio/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/bhavanki/doppio/actions/workflows/codeql-analysis.yml)
+
 ## Trying It Out
 
 ```
