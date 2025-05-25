@@ -118,8 +118,7 @@ public class RequestHandler implements Runnable {
     // Retrieve the peer certificate, if any.
     X509Certificate peerCertificate;
     try {
-      peerCertificate = (X509Certificate)
-          ((session.getPeerCertificates())[0]);
+      peerCertificate = (X509Certificate) session.getPeerCertificates()[0];
     } catch (SSLPeerUnverifiedException e) {
       peerCertificate = null;
     }
