@@ -61,8 +61,7 @@ public class Server {
    */
   public Server(ServerProperties serverProps) {
     this.serverProps = serverProps;
-    executorService =
-      Executors.newFixedThreadPool(serverProps.getNumThreads());
+    executorService = Executors.newVirtualThreadPerTaskExecutor();
   }
 
   private ServerSocket controlSocket;
